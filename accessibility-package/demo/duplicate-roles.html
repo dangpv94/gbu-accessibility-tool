@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <title>Test Duplicate Roles</title>
+</head>
+<body>
+    <h1>Test Duplicate Role Attributes</h1>
+    
+    <!-- Images with duplicate roles -->
+    <img src="logo.png" alt="Logo" role="img" role="img" role="img" role="img" role="img">
+    <img src="banner.jpg" alt="Banner" role="img" role="img" role="img" role="img" role="img" role="img">
+    
+    <!-- Links with duplicate roles -->
+    <a href="/home" role="link" role="link" role="link" role="link" role="link">Home</a>
+    <a href="/about" role="link" role="link" role="link" role="link" role="link" role="link">About</a>
+    
+    <!-- Buttons with duplicate roles -->
+    <button onclick="submit()" role="button" role="button" role="button" role="button" role="button">Submit</button>
+    <button type="button" role="button" role="button" role="button">Click Me</button>
+    
+    <!-- Mixed quotes -->
+    <div onclick="toggle()" role="button" role='button' role="button" role="button" role="button">Toggle</div>
+    <span onclick="show()" role='button' role="button" role="button" role="button" role="button">Show</span>
+    
+    <!-- Navigation with duplicates -->
+    <nav>
+        <ul class="nav-menu" role="menubar" role="menubar" role="menubar" role="menubar" role="menubar">
+            <li class="nav-item" role="menuitem" role="menuitem" role="menuitem" role="menuitem" role="menuitem">
+                <a href="/products" role="link" role="link" role="link" role="link" role="link">Products</a>
+            </li>
+            <li class="nav-item" role="menuitem" role="menuitem" role="menuitem" role="menuitem" role="menuitem" role="menuitem">
+                <a href="/services" role="link" role="link" role="link" role="link" role="link" role="link">Services</a>
+            </li>
+        </ul>
+    </nav>
+    
+    <!-- Complex duplicates -->
+    <article>
+        <h2>Article with Issues</h2>
+        <img src="article1.jpg" alt="Article Image" role="img" role="img" role="img" role="img" role="img">
+        <p>Some content...</p>
+        <a href="/read-more" role="link" role="link" role="link" role="link" role="link" role="link" role="link">Read More</a>
+    </article>
+</body>
+</html>

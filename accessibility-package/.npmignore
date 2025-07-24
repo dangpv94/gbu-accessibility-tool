@@ -1,0 +1,10 @@
+*.backup
+test-*
+.DS_Store
+.vscode/
+.idea/
+*.log
+coverage/
+.nyc_output/
+DEPLOYMENT_GUIDE.md
+*.tgz

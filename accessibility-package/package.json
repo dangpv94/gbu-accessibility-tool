@@ -1,0 +1,68 @@
+{
+  "name": "gbu-accessibility-package",
+  "version": "1.3.0",
+  "description": "Automated accessibility fixes for HTML files - Alt attributes, Lang attributes, Role attributes. Smart context-aware alt text generation with individual fix options and comprehensive role attribute management.",
+  "main": "index.js",
+  "bin": {
+    "gbu-a11y": "./cli.js",
+    "accessibility-fixer": "./cli.js"
+  },
+  "scripts": {
+    "start": "node cli.js",
+    "fix": "node cli.js",
+    "preview": "node cli.js --dry-run",
+    "comprehensive": "node cli.js --comprehensive",
+    "alt-only": "node cli.js --alt-only",
+    "lang-only": "node cli.js --lang-only",
+    "role-only": "node cli.js --role-only",
+    "cleanup-only": "node cli.js --cleanup-only",
+    "test": "node test-package.js",
+    "demo": "node cli.js --dry-run demo",
+    "prepublishOnly": "npm run test"
+  },
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "html",
+    "automation",
+    "alt-text",
+    "role-attributes",
+    "lang-attributes",
+    "wcag",
+    "gbu",
+    "context-aware",
+    "smart-alt-text",
+    "accessibility-fixer",
+    "html-accessibility"
+  ],
+  "author": "GBU Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/gbu-accessibility-package.git"
+  },
+  "homepage": "https://github.com/your-org/gbu-accessibility-package#readme",
+  "bugs": {
+    "url": "https://github.com/your-org/gbu-accessibility-package/issues"
+  },
+  "files": [
+    "lib/",
+    "index.js",
+    "cli.js",
+    "example.js",
+    "demo/",
+    "README.md",
+    "QUICK_START.md",
+    "PACKAGE_SUMMARY.md"
+  ],
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "gbu-accessibility-package": "^1.3.0"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
