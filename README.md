@@ -1,1 +1,0 @@
-# gbu-accessibility-tool
