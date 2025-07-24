@@ -637,11 +637,66 @@ class AccessibilityFixer {
       }
     });
     
+    // Check for picture elements with role="img" that contain img elements
+    const pictureWithImgPattern = /<picture[^>]*role\s*=\s*["']img["'][^>]*>[\s\S]*?<img[^>]*>[\s\S]*?<\/picture>/gi;
+    const pictureWithImgMatches = content.match(pictureWithImgPattern) || [];
+    pictureWithImgMatches.forEach((pictureBlock, index) => {
+      const imgInPicture = pictureBlock.match(/<img[^>]*>/i);
+      if (imgInPicture && !/role\s*=/i.test(imgInPicture[0])) {
+        issues.push({
+          type: '🖼️ Role placement',
+          description: `Picture ${index + 1} has role="img" but should be on the img element inside`,
+          element: pictureBlock.substring(0, 100) + '...'
+        });
+      }
+    });
+    
     return issues;
+  }
+
+  fixPictureImgRoles(content) {
+    let fixed = content;
+    
+    // Find all picture elements that contain img elements
+    const picturePattern = /<picture[^>]*role\s*=\s*["']img["'][^>]*>[\s\S]*?<\/picture>/gi;
+    const pictureMatches = content.match(picturePattern) || [];
+    
+    for (const pictureBlock of pictureMatches) {
+      // Check if this picture contains an img element
+      const imgInPicture = pictureBlock.match(/<img[^>]*>/i);
+      
+      if (imgInPicture) {
+        const imgTag = imgInPicture[0];
+        
+        // Check if img already has role attribute
+        const imgHasRole = /role\s*=/i.test(imgTag);
+        
+        if (!imgHasRole) {
+          // Remove role="img" from picture element
+          const pictureWithoutRole = pictureBlock.replace(/\s*role\s*=\s*["']img["']/i, '');
+          
+          // Add role="img" to img element
+          const imgWithRole = imgTag.replace(/(<img[^>]*?)(\s*>)/i, '$1 role="img"$2');
+          
+          // Replace the img in the modified picture block
+          const updatedPictureBlock = pictureWithoutRole.replace(imgTag, imgWithRole);
+          
+          // Replace in the main content
+          fixed = fixed.replace(pictureBlock, updatedPictureBlock);
+          
+          console.log(chalk.yellow(`  🖼️ Moved role="img" from <picture> to <img> element`));
+        }
+      }
+    }
+    
+    return fixed;
   }
 
   fixRoleAttributesInContent(content) {
     let fixed = content;
+    
+    // Fix picture elements with img children - move role from picture to img
+    fixed = this.fixPictureImgRoles(fixed);
     
     // Fix all images - add role="img" (only if no role exists)
     fixed = fixed.replace(

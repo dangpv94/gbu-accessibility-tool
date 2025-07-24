@@ -182,6 +182,7 @@ gbu-a11y --comprehensive
 
 ### 3. Role Attributes
 - **Images** → `role="img"`
+- **Picture elements** → Moves `role="img"` from `<picture>` to `<img>` inside
 - **Links** → `role="link"`
 - **Clickable elements** → `role="button"`
 - **Navigation lists** → `role="menubar"`
@@ -190,11 +191,17 @@ gbu-a11y --comprehensive
 ```html
 <!-- Before -->
 <img src="icon.png" alt="Icon">
+<picture role="img">
+  <img src="photo.jpg" alt="Photo">
+</picture>
 <a href="/home">Home</a>
 <div class="btn-click">Click me</div>
 
 <!-- After -->
 <img src="icon.png" alt="Icon" role="img">
+<picture>
+  <img src="photo.jpg" alt="Photo" role="img">
+</picture>
 <a href="/home" role="link">Home</a>
 <div class="btn-click" role="button">Click me</div>
 ```
