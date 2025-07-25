@@ -26,7 +26,12 @@ const options = {
   buttonsOnly: false,
   linksOnly: false,
   landmarksOnly: false,
-  headingsOnly: false
+  headingsOnly: false,
+  // Enhanced alt options
+  enhancedAlt: false,
+  altCreativity: 'balanced', // conservative, balanced, creative
+  includeEmotions: false,
+  strictAltChecking: false
 };
 
 // Parse arguments
@@ -86,6 +91,18 @@ for (let i = 0; i < args.length; i++) {
     case '--headings-only':
       options.headingsOnly = true;
       break;
+    case '--enhanced-alt':
+      options.enhancedAlt = true;
+      break;
+    case '--alt-creativity':
+      options.altCreativity = args[++i];
+      break;
+    case '--include-emotions':
+      options.includeEmotions = true;
+      break;
+    case '--strict-alt':
+      options.strictAltChecking = true;
+      break;
     default:
       if (!arg.startsWith('-')) {
         options.directory = arg;
@@ -116,7 +133,25 @@ Options:
   --links-only             Fix link names + cleanup
   --landmarks-only         Fix landmarks + cleanup
   --headings-only          Analyze heading structure (no auto-fix)
+  --enhanced-alt           Use enhanced alt attribute analysis and generation
+  --alt-creativity <mode>  Alt text creativity: conservative, balanced, creative (default: balanced)
+  --include-emotions       Include emotional descriptors in alt text
+  --strict-alt             Enable strict alt attribute quality checking
   -h, --help               Show this help message
+
+Enhanced Alt Features:
+  --enhanced-alt           Comprehensive alt attribute analysis with:
+                          • Image type classification (decorative, functional, complex, etc.)
+                          • Content quality checking (length, redundancy, generic text)
+                          • Context-aware alt text generation
+                          • Multi-language vocabulary support
+                          • Brand and emotional context integration
+                          • Technical image description (charts, graphs)
+
+Alt Creativity Modes:
+  conservative            Simple, factual descriptions
+  balanced               Context-aware with moderate creativity (default)
+  creative               Rich descriptions with emotions and brand context
 
 Examples:
   node cli.js                          # Comprehensive fixes (no backup by default)
@@ -131,6 +166,10 @@ Examples:
   node cli.js ./src                    # Fix src directory (comprehensive)
   node cli.js -l en --dry-run ./dist   # Preview comprehensive fixes in English
   node cli.js --backup ./public       # Comprehensive fixes with backups
+  node cli.js --enhanced-alt           # Use enhanced alt attribute analysis
+  node cli.js --enhanced-alt --alt-creativity creative  # Creative alt text generation
+  node cli.js --enhanced-alt --include-emotions         # Include emotional context
+  node cli.js --strict-alt --enhanced-alt              # Strict quality checking
 
 Features:
   ✅ Alt attributes for images
@@ -171,7 +210,11 @@ async function main() {
   const fixer = new AccessibilityFixer({
     language: options.language,
     backupFiles: options.backupFiles,
-    dryRun: options.dryRun
+    dryRun: options.dryRun,
+    enhancedAltMode: options.enhancedAlt,
+    altCreativity: options.altCreativity,
+    includeEmotions: options.includeEmotions,
+    strictAltChecking: options.strictAltChecking
   });
 
   try {

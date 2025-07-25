@@ -6,6 +6,8 @@
 const fs = require('fs').promises;
 const path = require('path');
 const chalk = require('chalk');
+const EnhancedAltChecker = require('./enhanced-alt-checker.js');
+const EnhancedAltGenerator = require('./enhanced-alt-generator.js');
 
 class AccessibilityFixer {
   constructor(config = {}) {
@@ -13,8 +15,28 @@ class AccessibilityFixer {
       backupFiles: config.backupFiles === true,
       language: config.language || 'ja',
       dryRun: config.dryRun || false,
+      enhancedAltMode: config.enhancedAltMode || false,
+      altCreativity: config.altCreativity || 'balanced', // conservative, balanced, creative
+      includeEmotions: config.includeEmotions || false,
+      strictAltChecking: config.strictAltChecking || false,
       ...config
     };
+    
+    // Initialize enhanced alt tools
+    this.enhancedAltChecker = new EnhancedAltChecker({
+      language: this.config.language,
+      strictMode: this.config.strictAltChecking,
+      checkDecorative: true,
+      checkInformative: true,
+      checkComplex: true
+    });
+    
+    this.enhancedAltGenerator = new EnhancedAltGenerator({
+      language: this.config.language,
+      creativity: this.config.altCreativity,
+      includeEmotions: this.config.includeEmotions,
+      includeBrandContext: true
+    });
   }
 
   async fixHtmlLang(directory = '.') {
@@ -57,18 +79,50 @@ class AccessibilityFixer {
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
     let totalIssuesFound = 0;
+    let enhancedIssues = []; // Declare here to avoid scope issues
     
     for (const file of htmlFiles) {
       try {
         const content = await fs.readFile(file, 'utf8');
-        const issues = this.analyzeAltAttributes(content);
         
-        if (issues.length > 0) {
-          console.log(chalk.cyan(`\n📁 ${file}:`));
-          issues.forEach(issue => {
-            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
-            totalIssuesFound++;
-          });
+        // Use enhanced alt checker if enabled
+        if (this.config.enhancedAltMode) {
+          enhancedIssues = this.enhancedAltChecker.analyzeAltAttributes(content);
+          
+          if (enhancedIssues.length > 0) {
+            console.log(chalk.cyan(`\n📁 ${file}:`));
+            enhancedIssues.forEach(issue => {
+              console.log(chalk.yellow(`  🔍 Image ${issue.imageIndex} (${issue.src}):`));
+              issue.issues.forEach(subIssue => {
+                const icon = subIssue.severity === 'ERROR' ? '❌' : 
+                           subIssue.severity === 'WARNING' ? '⚠️' : 'ℹ️';
+                console.log(chalk.yellow(`    ${icon} ${subIssue.message}`));
+                console.log(chalk.gray(`       ${subIssue.description}`));
+              });
+              
+              // Show recommendations
+              if (issue.recommendations.length > 0) {
+                console.log(chalk.blue(`    💡 Recommendations:`));
+                issue.recommendations.forEach(rec => {
+                  console.log(chalk.blue(`       ${rec.suggestion}`));
+                  console.log(chalk.gray(`       ${rec.reason}`));
+                });
+              }
+              totalIssuesFound += issue.issues.length;
+            });
+          }
+        } else {
+          // Use original analysis
+          const issues = this.analyzeAltAttributes(content);
+          
+          if (issues.length > 0) {
+            console.log(chalk.cyan(`\n📁 ${file}:`));
+            issues.forEach(issue => {
+              console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+              totalIssuesFound++;
+            });
+          }
+          enhancedIssues = issues; // For consistency in results calculation
         }
         
         const fixed = this.fixAltAttributes(content);
@@ -83,9 +137,11 @@ class AccessibilityFixer {
           }
           
           console.log(chalk.green(`✅ Fixed alt attributes in: ${file}`));
-          results.push({ file, status: 'fixed', issues: issues.length });
+          results.push({ file, status: 'fixed', issues: this.config.enhancedAltMode ? 
+            enhancedIssues.reduce((sum, ei) => sum + (ei.issues ? ei.issues.length : 1), 0) : enhancedIssues.length });
         } else {
-          results.push({ file, status: 'no-change', issues: issues.length });
+          results.push({ file, status: 'no-change', issues: this.config.enhancedAltMode ? 
+            enhancedIssues.reduce((sum, ei) => sum + (ei.issues ? ei.issues.length : 1), 0) : enhancedIssues.length });
         }
       } catch (error) {
         console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
@@ -94,6 +150,9 @@ class AccessibilityFixer {
     }
     
     console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} alt attribute issues across ${results.length} files`));
+    if (this.config.enhancedAltMode) {
+      console.log(chalk.gray(`   🔍 Enhanced analysis mode: Comprehensive quality checking enabled`));
+    }
     return results;
   }
 
@@ -245,6 +304,21 @@ class AccessibilityFixer {
   }
 
   generateAltText(imgTag, htmlContent = '', imgIndex = 0) {
+    // Use enhanced alt generator if enabled
+    if (this.config.enhancedAltMode) {
+      try {
+        const analysis = this.enhancedAltChecker.analyzeImageContext(imgTag, htmlContent, imgIndex);
+        const enhancedAlt = this.enhancedAltGenerator.generateDiverseAltText(imgTag, htmlContent, analysis);
+        
+        if (enhancedAlt && enhancedAlt.trim().length > 0) {
+          return enhancedAlt;
+        }
+      } catch (error) {
+        console.warn(chalk.yellow(`⚠️ Enhanced alt generation failed, falling back to basic mode: ${error.message}`));
+      }
+    }
+    
+    // Fallback to original method
     const src = imgTag.match(/src\s*=\s*["']([^"']+)["']/i);
     const srcValue = src ? src[1].toLowerCase() : '';
     

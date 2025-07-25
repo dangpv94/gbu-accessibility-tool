@@ -1,11 +1,11 @@
 {
   "name": "gbu-accessibility-package",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Comprehensive accessibility fixes for HTML files. Smart context-aware alt text generation, form labels, button names, link names, landmarks, heading analysis, and WCAG-compliant role attributes. Covers major axe DevTools issues with individual fix modes.",
   "main": "index.js",
   "bin": {
-    "gbu-a11y": "./cli.js",
-    "accessibility-fixer": "./cli.js"
+    "gbu-a11y": "cli.js",
+    "accessibility-fixer": "cli.js"
   },
   "scripts": {
     "start": "node cli.js",
@@ -24,7 +24,10 @@
     "no-backup": "node cli.js --no-backup",
     "cleanup-backups": "find . -name '*.backup' -type f -delete",
     "test": "node test-package.js",
+    "test-enhanced-alt": "node test-enhanced-alt.js",
     "demo": "node cli.js --dry-run demo",
+    "demo-enhanced": "node cli.js --enhanced-alt --dry-run demo",
+    "demo-creative": "node cli.js --enhanced-alt --alt-creativity creative --include-emotions --dry-run demo",
     "prepublishOnly": "npm run test"
   },
   "keywords": [
@@ -57,7 +60,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dangpv94/gbu-accessibility-tool.git"
+    "url": "git+https://github.com/dangpv94/gbu-accessibility-tool.git"
   },
   "homepage": "https://github.com/dangpv94/gbu-accessibility-tool#readme",
   "bugs": {
@@ -74,6 +77,7 @@
     "CHANGELOG.md",
     "QUICK_START.md",
     "PACKAGE_SUMMARY.md",
+    "ENHANCED_ALT_FEATURES.md",
     "LICENSE"
   ],
   "dependencies": {

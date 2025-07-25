@@ -7,7 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const AccessibilityFixer = require('./index.js');
+const { AccessibilityFixer } = require('./index.js');
 
 console.log('🧪 Testing GBU Accessibility Package...\n');
 
