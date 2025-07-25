@@ -12,6 +12,11 @@
 - 🏷️ **Aria Label Support** - Automatic aria-label matching alt text
 - 🌐 **HTML Lang Attributes** - Automatic language attribute fixes
 - 🎭 **Role Attributes** - WCAG-compliant role attribute management
+- 📋 **Form Labels** - Fix missing labels with intelligent aria-label generation
+- 🔘 **Button Names** - Fix empty buttons and input buttons without names
+- 🔗 **Link Names** - Fix empty links and detect generic link text
+- 🏛️ **Landmarks** - Add missing main and navigation landmarks
+- 📑 **Heading Analysis** - Analyze heading structure with suggestions (no auto-fix)
 - 🧹 **Duplicate Cleanup** - Remove duplicate role attributes
 - 📁 **Batch Processing** - Process entire directories recursively
 - 💾 **Automatic Backups** - Safe modifications with backup files
@@ -64,16 +69,21 @@ Options:
   --alt-only               Fix alt attributes + cleanup
   --lang-only              Fix HTML lang attributes + cleanup
   --role-only              Fix role attributes + cleanup
+  --forms-only             Fix form labels + cleanup
+  --buttons-only           Fix button names + cleanup
+  --links-only             Fix link names + cleanup
+  --landmarks-only         Fix landmarks + cleanup
+  --headings-only          Analyze heading structure (no auto-fix)
   -h, --help               Show help message
 ```
 
 ### Examples
 
 ```bash
-# Basic fixes for current directory (all standard fixes)
+# Comprehensive fixes (default - includes cleanup)
 gbu-a11y
 
-# Preview all changes (comprehensive by default)
+# Preview all changes
 gbu-a11y --dry-run
 
 # Fix with English language
@@ -81,13 +91,16 @@ gbu-a11y -l en ./public
 
 # Individual fix types (all include cleanup)
 gbu-a11y --alt-only          # Fix alt attributes + cleanup
-gbu-a11y --lang-only         # Fix lang attributes + cleanup
-gbu-a11y --role-only         # Fix role attributes + cleanup
+gbu-a11y --forms-only        # Fix form labels + cleanup
+gbu-a11y --buttons-only      # Fix button names + cleanup
+gbu-a11y --links-only        # Fix link names + cleanup
+gbu-a11y --landmarks-only    # Fix landmarks + cleanup
+gbu-a11y --headings-only     # Analyze heading structure
 gbu-a11y --cleanup-only      # Only cleanup duplicates
 
 # Combine with other options
 gbu-a11y --alt-only --dry-run ./src    # Preview alt fixes + cleanup
-gbu-a11y --role-only -l en ./public    # Role fixes + cleanup with English lang
+gbu-a11y --forms-only -l en ./public   # Form fixes + cleanup with English lang
 
 # Backup options
 gbu-a11y --backup ./dist             # Explicitly enable backups (default)
@@ -97,21 +110,21 @@ gbu-a11y --no-backup ./dist          # Disable backups for faster processing
 ## 🔧 Programmatic Usage
 
 ```javascript
-const AccessibilityFixer = require("gbu-accessibility-package");
+const AccessibilityFixer = require('gbu-accessibility-package');
 
 const fixer = new AccessibilityFixer({
-  language: "en",
+  language: 'en',
   backupFiles: true,
-  dryRun: false,
+  dryRun: false
 });
 
 // Fix all accessibility issues
 async function fixAccessibility() {
   try {
-    const results = await fixer.fixAllAccessibilityIssues("./src");
-    console.log("Fixed files:", results);
+    const results = await fixer.fixAllAccessibilityIssues('./src');
+    console.log('Fixed files:', results);
   } catch (error) {
-    console.error("Error:", error);
+    console.error('Error:', error);
   }
 }
 
@@ -120,75 +133,63 @@ fixAccessibility();
 
 ## 🎯 Fix Modes
 
+### Comprehensive Mode (Default)
+Runs all fixes including cleanup:
+
+1. **HTML lang attributes** - Adds missing language attributes
+2. **Alt attributes** - Generates contextual alt text + aria-label
+3. **Role attributes** - Adds appropriate ARIA roles + picture handling
+4. **Form labels** - Fixes missing input labels
+5. **Button names** - Fixes empty buttons
+6. **Link names** - Fixes empty links and detects generic text
+7. **Landmarks** - Adds main and navigation landmarks
+8. **Heading analysis** - Analyzes structure (suggestions only)
+9. **Cleanup** - Removes duplicate role attributes
+
 ### Individual Fix Options
+Each individual mode includes cleanup step:
 
-You can now fix specific accessibility issues individually:
-
-- `--alt-only` - Only fix alt attributes for images
-- `--lang-only` - Only fix HTML lang attributes
-- `--role-only` - Only fix role attributes
-- `--cleanup-only` - Only cleanup duplicate role attributes
-
-### Combined Modes
-
-- **Standard mode** (default) - Fixes alt, lang, and role attributes
-- `--comprehensive` - All fixes including duplicate cleanup
-
-```bash
-# Fix only missing alt attributes
-gbu-a11y --alt-only
-
-# Fix only HTML lang attributes
-gbu-a11y --lang-only
-
-# Fix only role attributes
-gbu-a11y --role-only
-
-# Clean up duplicate roles only
-gbu-a11y --cleanup-only
-
-# All fixes (recommended)
-gbu-a11y --comprehensive
-```
+- `--alt-only` - Alt attributes + cleanup
+- `--forms-only` - Form labels + cleanup
+- `--buttons-only` - Button names + cleanup
+- `--links-only` - Link names + cleanup
+- `--landmarks-only` - Landmarks + cleanup
+- `--headings-only` - Heading analysis only (no cleanup)
 
 ## 🔧 What Gets Fixed
 
-### 1. Alt Attributes
-
+### 1. Alt Attributes & Aria Labels
 - **Missing alt attributes** → Adds contextual alt text
 - **Empty alt attributes** → Generates meaningful descriptions
+- **Automatic aria-label** → Adds aria-label matching alt text
 - **Context-aware generation** → Uses surrounding text, headings, captions
 
 ```html
 <!-- Before -->
-<img src="logo.png" />
-<img src="chart.jpg" alt="" />
+<img src="logo.png">
+<img src="chart.jpg" alt="">
 
 <!-- After -->
-<img src="logo.png" alt="ロゴ" />
-<img src="chart.jpg" alt="グラフ" />
+<img src="logo.png" alt="ロゴ" role="img" aria-label="ロゴ">
+<img src="chart.jpg" alt="グラフ" role="img" aria-label="グラフ">
 ```
 
 ### 2. HTML Lang Attributes
-
 - **Missing lang attributes** → Adds specified language
 - **Empty lang attributes** → Sets proper language code
 
 ```html
 <!-- Before -->
 <html>
-  <html lang="">
-    <!-- After -->
-    <html lang="ja">
-      <html lang="ja"></html>
-    </html>
-  </html>
-</html>
+<html lang="">
+
+<!-- After -->
+<html lang="ja">
+<html lang="ja">
 ```
 
-### 3. Role Attributes & Aria Labels
-
-- **Images** → `role="img"` + `aria-label` (matching alt text)
+### 3. Role Attributes
+- **Images** → `role="img"`
 - **Picture elements** → Moves `role="img"` from `<picture>` to `<img>` inside
 - **Links** → `role="link"`
 - **Clickable elements** → `role="button"`
@@ -197,48 +198,109 @@ gbu-a11y --comprehensive
 
 ```html
 <!-- Before -->
-<img src="icon.png" alt="Icon" />
+<img src="icon.png" alt="Icon">
 <picture role="img">
-  <img src="photo.jpg" alt="Photo" />
+  <img src="photo.jpg" alt="Photo">
 </picture>
 <a href="/home">Home</a>
 <div class="btn-click">Click me</div>
 
 <!-- After -->
-<img src="icon.png" alt="Icon" role="img" aria-label="Icon" />
+<img src="icon.png" alt="Icon" role="img" aria-label="Icon">
 <picture>
-  <img src="photo.jpg" alt="Photo" role="img" aria-label="Photo" />
+  <img src="photo.jpg" alt="Photo" role="img" aria-label="Photo">
 </picture>
 <a href="/home" role="link">Home</a>
 <div class="btn-click" role="button">Click me</div>
 ```
 
-### 4. Aria Label Enhancement
-
-- **Automatic aria-label** → Adds `aria-label` matching `alt` text for images
-- **Preserves existing** → Won't override existing `aria-label` attributes
-- **Smart detection** → Only adds when `alt` text exists and is not empty
+### 4. Form Labels
+- **Input elements without labels** → Adds appropriate `aria-label`
+- **Supports multiple input types** → text, email, password, tel, etc.
 
 ```html
 <!-- Before -->
-<img src="chart.jpg" alt="Sales Chart" />
+<input type="text" placeholder="Name">
+<input type="email">
+<input type="password">
 
 <!-- After -->
-<img src="chart.jpg" alt="Sales Chart" role="img" aria-label="Sales Chart" />
+<input type="text" placeholder="Name" aria-label="テキスト入力">
+<input type="email" aria-label="メールアドレス">
+<input type="password" aria-label="パスワード">
 ```
 
-### 5. Duplicate Cleanup
-
-- **Removes duplicate role attributes**
-- **Preserves first occurrence**
-- **Handles mixed quote styles**
+### 5. Button Names
+- **Empty buttons** → Adds text content and aria-label
+- **Input buttons without value** → Adds appropriate value
 
 ```html
 <!-- Before -->
-<img src="test.jpg" role="img" role="img" alt="Test" />
+<button></button>
+<input type="submit">
+<input type="button">
 
 <!-- After -->
-<img src="test.jpg" role="img" alt="Test" />
+<button aria-label="ボタン">ボタン</button>
+<input type="submit" value="送信">
+<input type="button" value="ボタン">
+```
+
+### 6. Link Names
+- **Empty links** → Adds aria-label
+- **Generic text detection** → Identifies "Click here", "Read more"
+- **Image-only links** → Handles links containing only images
+
+```html
+<!-- Before -->
+<a href="/home"></a>
+<a href="/more">Click here</a>
+<a href="/image"><img src="icon.png"></a>
+
+<!-- After -->
+<a href="/home" aria-label="リンク">リンク</a>
+<a href="/more">Click here</a> <!-- Detected but not auto-fixed -->
+<a href="/image" aria-label="画像リンク"><img src="icon.png"></a>
+```
+
+### 7. Landmarks
+- **Missing main landmark** → Adds `role="main"`
+- **Missing navigation landmark** → Adds `role="navigation"`
+
+```html
+<!-- Before -->
+<div class="content">
+  <p>Main content</p>
+</div>
+<ul class="navigation">
+  <li><a href="/home">Home</a></li>
+</ul>
+
+<!-- After -->
+<div class="content" role="main">
+  <p>Main content</p>
+</div>
+<ul class="navigation" role="navigation">
+  <li><a href="/home">Home</a></li>
+</ul>
+```
+
+### 8. Heading Analysis
+- **Multiple h1 detection** → Identifies and suggests fixes
+- **Heading level skipping** → Detects jumps (h1 → h3)
+- **Empty headings** → Identifies headings without content
+- **Analysis only** → Provides suggestions, no auto-fix for content safety
+
+### 9. Duplicate Cleanup
+- **Removes duplicate role attributes** → Keeps first occurrence
+- **Handles mixed quotes** → role="button" role='button'
+
+```html
+<!-- Before -->
+<img src="test.jpg" role="img" role="img" alt="Test">
+
+<!-- After -->
+<img src="test.jpg" role="img" alt="Test">
 ```
 
 ## 🌟 Smart Alt Text Generation
@@ -246,9 +308,8 @@ gbu-a11y --comprehensive
 The package uses intelligent context analysis to generate meaningful alt text:
 
 ### Context Sources
-
 1. **Title attributes**
-2. **Aria-label attributes**
+2. **Aria-label attributes**  
 3. **Definition terms (dt elements)**
 4. **Parent link text**
 5. **Nearby headings**
@@ -256,7 +317,6 @@ The package uses intelligent context analysis to generate meaningful alt text:
 7. **Surrounding text content**
 
 ### Fallback Patterns
-
 - `logo.png` → "ロゴ" (Logo)
 - `icon.svg` → "アイコン" (Icon)
 - `banner.jpg` → "バナー" (Banner)
@@ -265,47 +325,48 @@ The package uses intelligent context analysis to generate meaningful alt text:
 
 ## 📊 Output Examples
 
-### Standard Mode
-
+### Comprehensive Mode
 ```
 🚀 Starting Accessibility Fixer...
-📝 Step 1: Fixing HTML lang attributes...
+🎯 Running comprehensive accessibility fixes...
+
+📝 Step 1: HTML lang attributes...
 ✅ Fixed lang attributes in 5 files
 
-🖼️ Step 2: Fixing alt attributes...
+🖼️ Step 2: Alt attributes...
 ✅ Fixed alt attributes in 12 files (34 issues)
 
-🎭 Step 3: Fixing role attributes...
+🎭 Step 3: Role attributes...  
 ✅ Fixed role attributes in 8 files (67 issues)
 
-📊 Summary:
-   Total files scanned: 25
-   Files fixed: 15
-   Total issues resolved: 106
+📋 Step 4: Form labels...
+✅ Fixed form labels in 6 files (15 issues)
 
-🎉 All accessibility fixes completed successfully!
-```
+🔘 Step 5: Button names...
+✅ Fixed button names in 4 files (8 issues)
 
-### Comprehensive Mode
+🔗 Step 6: Link names...
+✅ Fixed link names in 7 files (12 issues)
 
-```
-🎯 Running comprehensive accessibility fixes...
-📝 Step 1: HTML lang attributes...
-🖼️ Step 2: Alt attributes...
-🎭 Step 3: Role attributes...
-🧹 Step 4: Cleanup duplicate roles...
+🏛️ Step 7: Landmarks...
+✅ Fixed landmarks in 3 files (5 issues)
+
+📑 Step 8: Heading analysis...
+✅ Analyzed headings in 10 files (18 suggestions)
+
+🧹 Step 9: Cleanup duplicate roles...
+✅ Cleaned duplicate roles in 2 files
 
 🎉 All accessibility fixes completed!
 📊 Final Summary:
    Total files scanned: 25
-   Files fixed: 15
-   Total issues resolved: 106
+   Files fixed: 20
+   Total issues resolved: 164
 ```
 
 ## 🔒 Safety Features
 
 ### Backup Options
-
 - **Default behavior**: Creates `.backup` files automatically for safety
 - **Disable backups**: Use `--no-backup` for faster processing
 - **Explicit enable**: Use `--backup` to be explicit about backup creation
@@ -322,7 +383,6 @@ gbu-a11y --backup --comprehensive
 ```
 
 ### Other Safety Features
-
 - **Dry run mode** for safe previewing with `--dry-run`
 - **Non-destructive** - only adds missing attributes
 - **Duplicate prevention** - won't add existing attributes
@@ -331,31 +391,54 @@ gbu-a11y --backup --comprehensive
 ## 🛠️ Configuration
 
 ### Package.json Scripts
-
 ```json
 {
   "scripts": {
     "a11y:fix": "gbu-a11y",
     "a11y:check": "gbu-a11y --dry-run",
     "a11y:comprehensive": "gbu-a11y --comprehensive",
+    "a11y:forms": "gbu-a11y --forms-only",
+    "a11y:buttons": "gbu-a11y --buttons-only",
+    "a11y:links": "gbu-a11y --links-only",
+    "a11y:landmarks": "gbu-a11y --landmarks-only",
+    "a11y:headings": "gbu-a11y --headings-only",
     "a11y:cleanup": "gbu-a11y --cleanup-only",
-    "a11y:alt": "gbu-a11y --alt-only",
-    "a11y:lang": "gbu-a11y --lang-only",
-    "a11y:role": "gbu-a11y --role-only"
+    "cleanup-backups": "find . -name '*.backup' -type f -delete"
   }
 }
 ```
 
 ### CI/CD Integration
-
 ```yaml
 # GitHub Actions example
 - name: Check Accessibility
   run: npx gbu-accessibility-package --dry-run
 
-- name: Fix Accessibility Issues
+- name: Fix Accessibility Issues  
   run: npx gbu-accessibility-package --comprehensive
 ```
+
+## 📋 Accessibility Standards Coverage
+
+This package addresses common issues found by axe DevTools:
+
+### ✅ Supported
+- `image-alt` - Images must have alternate text
+- `html-has-lang` - HTML element must have lang attribute
+- `label` - Form elements must have labels (basic support)
+- `button-name` - Buttons must have discernible text
+- `link-name` - Links must have discernible text (basic support)
+- `landmark-one-main` - Document should have one main landmark
+- `region` - Page content should be contained by landmarks
+- `heading-order` - Heading levels analysis (suggestions only)
+- Duplicate role attributes cleanup
+
+### 🔄 Future Enhancements
+- `color-contrast` - Color contrast checking
+- `focus-order-semantics` - Focus order validation
+- Advanced ARIA attributes validation
+- Table accessibility features
+- List structure validation
 
 ## 🤝 Contributing
 
@@ -371,9 +454,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- 📧 **Issues**: [GitHub Issues](https://github.com/your-org/gbu-accessibility-package/issues)
-- 📖 **Documentation**: [GitHub Wiki](https://github.com/your-org/gbu-accessibility-package/wiki)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/your-org/gbu-accessibility-package/discussions)
+- 📧 **Issues**: [GitHub Issues](https://github.com/dangpv94/gbu-accessibility-tool/issues)
+- 📖 **Documentation**: [GitHub Wiki](https://github.com/dangpv94/gbu-accessibility-tool/wiki)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/dangpv94/gbu-accessibility-tool/discussions)
 
 ## 🏆 Why Choose GBU Accessibility Package?
 
@@ -383,6 +466,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - ✅ **Comprehensive** - Covers all major accessibility issues
 - ✅ **Fast & Efficient** - Batch processing with detailed reports
 - ✅ **WCAG Compliant** - Follows accessibility standards
+- ✅ **axe DevTools Compatible** - Fixes common axe issues
+- ✅ **Individual Control** - Fix specific issues or everything
+- ✅ **Safe Heading Analysis** - Suggests instead of auto-fixing
+- ✅ **Multi-language Support** - Japanese, English, and extensible
 
 ---
 

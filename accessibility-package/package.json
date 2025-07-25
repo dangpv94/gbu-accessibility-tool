@@ -1,7 +1,7 @@
 {
   "name": "gbu-accessibility-package",
   "version": "3.0.0",
-  "description": "Automated accessibility fixes for HTML files - Alt attributes, Lang attributes, Role attributes. Smart context-aware alt text generation with individual fix options and comprehensive role attribute management.",
+  "description": "Comprehensive accessibility fixes for HTML files. Smart context-aware alt text generation, form labels, button names, link names, landmarks, heading analysis, and WCAG-compliant role attributes. Covers major axe DevTools issues with individual fix modes.",
   "main": "index.js",
   "bin": {
     "gbu-a11y": "./cli.js",
@@ -36,11 +36,22 @@
     "role-attributes",
     "lang-attributes",
     "wcag",
-    "gbu",
+    "axe",
+    "form-labels",
+    "button-names",
+    "link-names",
+    "landmarks",
+    "heading-analysis",
+    "aria-label",
     "context-aware",
     "smart-alt-text",
     "accessibility-fixer",
-    "html-accessibility"
+    "html-accessibility",
+    "gbu",
+    "comprehensive",
+    "individual-fixes",
+    "backup-safe",
+    "dry-run"
   ],
   "author": "GBU Team",
   "license": "MIT",
@@ -59,8 +70,11 @@
     "example.js",
     "demo/",
     "README.md",
+    "README-vi.md",
+    "CHANGELOG.md",
     "QUICK_START.md",
-    "PACKAGE_SUMMARY.md"
+    "PACKAGE_SUMMARY.md",
+    "LICENSE"
   ],
   "dependencies": {
     "chalk": "^4.1.2"
