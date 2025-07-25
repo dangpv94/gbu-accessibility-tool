@@ -938,7 +938,12 @@ class AccessibilityFixer {
       lang: [],
       alt: [],
       roles: [],
-      cleanup: []
+      cleanup: [],
+      forms: [],
+      buttons: [],
+      links: [],
+      landmarks: [],
+      headings: [] // Analysis only
     };
     
     try {
@@ -954,8 +959,28 @@ class AccessibilityFixer {
       console.log(chalk.yellow('\n🎭 Step 3: Role attributes...'));
       results.roles = await this.fixRoleAttributes(directory);
       
-      // Step 4: Cleanup duplicate roles
-      console.log(chalk.yellow('\n🧹 Step 4: Cleanup duplicate roles...'));
+      // Step 4: Fix form labels
+      console.log(chalk.yellow('\n📋 Step 4: Form labels...'));
+      results.forms = await this.fixFormLabels(directory);
+      
+      // Step 5: Fix button names
+      console.log(chalk.yellow('\n🔘 Step 5: Button names...'));
+      results.buttons = await this.fixButtonNames(directory);
+      
+      // Step 6: Fix link names
+      console.log(chalk.yellow('\n🔗 Step 6: Link names...'));
+      results.links = await this.fixLinkNames(directory);
+      
+      // Step 7: Fix landmarks
+      console.log(chalk.yellow('\n🏛️ Step 7: Landmarks...'));
+      results.landmarks = await this.fixLandmarks(directory);
+      
+      // Step 8: Analyze headings (no auto-fix)
+      console.log(chalk.yellow('\n📑 Step 8: Heading analysis...'));
+      results.headings = await this.analyzeHeadings(directory);
+      
+      // Step 9: Cleanup duplicate roles
+      console.log(chalk.yellow('\n🧹 Step 9: Cleanup duplicate roles...'));
       results.cleanup = await this.cleanupDuplicateRoles(directory);
       
       // Summary
@@ -963,6 +988,10 @@ class AccessibilityFixer {
         ...results.lang.map(r => r.file),
         ...results.alt.map(r => r.file),
         ...results.roles.map(r => r.file),
+        ...results.forms.map(r => r.file),
+        ...results.buttons.map(r => r.file),
+        ...results.links.map(r => r.file),
+        ...results.landmarks.map(r => r.file),
         ...results.cleanup.map(r => r.file)
       ]).size;
       
@@ -970,6 +999,10 @@ class AccessibilityFixer {
         ...results.lang.filter(r => r.status === 'fixed').map(r => r.file),
         ...results.alt.filter(r => r.status === 'fixed').map(r => r.file),
         ...results.roles.filter(r => r.status === 'fixed').map(r => r.file),
+        ...results.forms.filter(r => r.status === 'fixed').map(r => r.file),
+        ...results.buttons.filter(r => r.status === 'fixed').map(r => r.file),
+        ...results.links.filter(r => r.status === 'fixed').map(r => r.file),
+        ...results.landmarks.filter(r => r.status === 'fixed').map(r => r.file),
         ...results.cleanup.filter(r => r.status === 'fixed').map(r => r.file)
       ]).size;
       
@@ -977,6 +1010,10 @@ class AccessibilityFixer {
         results.lang.filter(r => r.status === 'fixed').length +
         results.alt.reduce((sum, r) => sum + (r.issues || 0), 0) +
         results.roles.reduce((sum, r) => sum + (r.issues || 0), 0) +
+        results.forms.reduce((sum, r) => sum + (r.issues || 0), 0) +
+        results.buttons.reduce((sum, r) => sum + (r.issues || 0), 0) +
+        results.links.reduce((sum, r) => sum + (r.issues || 0), 0) +
+        results.landmarks.reduce((sum, r) => sum + (r.issues || 0), 0) +
         results.cleanup.filter(r => r.status === 'fixed').length;
       
       console.log(chalk.green('\n🎉 All accessibility fixes completed!'));
@@ -995,6 +1032,644 @@ class AccessibilityFixer {
       console.error(chalk.red('❌ Error during comprehensive fix:'), error.message);
       throw error;
     }
+  }
+
+  // Fix form labels
+  async fixFormLabels(directory = '.') {
+    console.log(chalk.blue('📋 Fixing form labels...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeFormLabels(content);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            totalIssuesFound++;
+          });
+        }
+        
+        const fixed = this.fixFormLabelsInContent(content);
+        
+        if (fixed !== content) {
+          if (this.config.backupFiles) {
+            await fs.writeFile(`${file}.backup`, content);
+          }
+          
+          if (!this.config.dryRun) {
+            await fs.writeFile(file, fixed);
+          }
+          
+          console.log(chalk.green(`✅ Fixed form labels in: ${file}`));
+          results.push({ file, status: 'fixed', issues: issues.length });
+        } else {
+          results.push({ file, status: 'no-change', issues: issues.length });
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} form label issues across ${results.length} files`));
+    return results;
+  }
+
+  analyzeFormLabels(content) {
+    const issues = [];
+    
+    // Find input elements without labels
+    const inputPattern = /<input[^>]*>/gi;
+    const inputs = content.match(inputPattern) || [];
+    
+    inputs.forEach((input, index) => {
+      const hasId = /id\s*=\s*["']([^"']+)["']/i.test(input);
+      const hasAriaLabel = /aria-label\s*=/i.test(input);
+      const hasAriaLabelledby = /aria-labelledby\s*=/i.test(input);
+      const inputType = input.match(/type\s*=\s*["']([^"']+)["']/i);
+      const type = inputType ? inputType[1].toLowerCase() : 'text';
+      
+      // Skip certain input types that don't need labels
+      if (['hidden', 'submit', 'button', 'reset'].includes(type)) {
+        return;
+      }
+      
+      if (hasId) {
+        const idMatch = input.match(/id\s*=\s*["']([^"']+)["']/i);
+        const id = idMatch[1];
+        const labelPattern = new RegExp(`<label[^>]*for\\s*=\\s*["']${id}["'][^>]*>`, 'i');
+        const hasLabel = labelPattern.test(content);
+        
+        if (!hasLabel && !hasAriaLabel && !hasAriaLabelledby) {
+          issues.push({
+            type: '📋 Missing label',
+            description: `Input ${index + 1} (type: ${type}) needs a label or aria-label`,
+            element: input.substring(0, 100) + '...'
+          });
+        }
+      } else if (!hasAriaLabel && !hasAriaLabelledby) {
+        issues.push({
+          type: '📋 Missing label/id',
+          description: `Input ${index + 1} (type: ${type}) needs an id and label, or aria-label`,
+          element: input.substring(0, 100) + '...'
+        });
+      }
+    });
+    
+    return issues;
+  }
+
+  fixFormLabelsInContent(content) {
+    let fixed = content;
+    
+    // Add aria-label to inputs without labels (basic fix)
+    const inputPattern = /<input([^>]*type\s*=\s*["']([^"']+)["'][^>]*)>/gi;
+    
+    fixed = fixed.replace(inputPattern, (match, attributes, type) => {
+      const lowerType = type.toLowerCase();
+      
+      // Skip certain input types
+      if (['hidden', 'submit', 'button', 'reset'].includes(lowerType)) {
+        return match;
+      }
+      
+      const hasAriaLabel = /aria-label\s*=/i.test(match);
+      const hasAriaLabelledby = /aria-labelledby\s*=/i.test(match);
+      const hasId = /id\s*=\s*["']([^"']+)["']/i.test(match);
+      
+      if (!hasAriaLabel && !hasAriaLabelledby) {
+        // Check if there's a corresponding label
+        if (hasId) {
+          const idMatch = match.match(/id\s*=\s*["']([^"']+)["']/i);
+          const id = idMatch[1];
+          const labelPattern = new RegExp(`<label[^>]*for\\s*=\\s*["']${id}["'][^>]*>`, 'i');
+          
+          if (!labelPattern.test(content)) {
+            // Add basic aria-label
+            const labelText = this.generateInputLabel(lowerType);
+            console.log(chalk.yellow(`  📋 Added aria-label="${labelText}" to ${lowerType} input`));
+            return match.replace(/(<input[^>]*?)(\s*>)/i, `$1 aria-label="${labelText}"$2`);
+          }
+        } else {
+          // Add basic aria-label
+          const labelText = this.generateInputLabel(lowerType);
+          console.log(chalk.yellow(`  📋 Added aria-label="${labelText}" to ${lowerType} input`));
+          return match.replace(/(<input[^>]*?)(\s*>)/i, `$1 aria-label="${labelText}"$2`);
+        }
+      }
+      
+      return match;
+    });
+    
+    return fixed;
+  }
+
+  generateInputLabel(type) {
+    const labels = {
+      'text': 'テキスト入力',
+      'email': 'メールアドレス',
+      'password': 'パスワード',
+      'tel': '電話番号',
+      'url': 'URL',
+      'search': '検索',
+      'number': '数値',
+      'date': '日付',
+      'time': '時間',
+      'checkbox': 'チェックボックス',
+      'radio': 'ラジオボタン',
+      'file': 'ファイル選択'
+    };
+    
+    return labels[type] || 'フォーム入力';
+  }
+
+  // Fix button names
+  async fixButtonNames(directory = '.') {
+    console.log(chalk.blue('🔘 Fixing button names...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeButtonNames(content);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            totalIssuesFound++;
+          });
+        }
+        
+        const fixed = this.fixButtonNamesInContent(content);
+        
+        if (fixed !== content) {
+          if (this.config.backupFiles) {
+            await fs.writeFile(`${file}.backup`, content);
+          }
+          
+          if (!this.config.dryRun) {
+            await fs.writeFile(file, fixed);
+          }
+          
+          console.log(chalk.green(`✅ Fixed button names in: ${file}`));
+          results.push({ file, status: 'fixed', issues: issues.length });
+        } else {
+          results.push({ file, status: 'no-change', issues: issues.length });
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} button name issues across ${results.length} files`));
+    return results;
+  }
+
+  analyzeButtonNames(content) {
+    const issues = [];
+    
+    // Find buttons without discernible text
+    const buttonPattern = /<button[^>]*>[\s\S]*?<\/button>/gi;
+    const buttons = content.match(buttonPattern) || [];
+    
+    buttons.forEach((button, index) => {
+      const hasAriaLabel = /aria-label\s*=/i.test(button);
+      const hasAriaLabelledby = /aria-labelledby\s*=/i.test(button);
+      const hasTitle = /title\s*=/i.test(button);
+      
+      // Extract text content
+      const textContent = button.replace(/<[^>]*>/g, '').trim();
+      
+      if (!textContent && !hasAriaLabel && !hasAriaLabelledby && !hasTitle) {
+        issues.push({
+          type: '🔘 Empty button',
+          description: `Button ${index + 1} has no discernible text`,
+          element: button.substring(0, 100) + '...'
+        });
+      }
+    });
+    
+    // Find input buttons without names
+    const inputButtonPattern = /<input[^>]*type\s*=\s*["'](button|submit|reset)["'][^>]*>/gi;
+    const inputButtons = content.match(inputButtonPattern) || [];
+    
+    inputButtons.forEach((input, index) => {
+      const hasValue = /value\s*=/i.test(input);
+      const hasAriaLabel = /aria-label\s*=/i.test(input);
+      const hasTitle = /title\s*=/i.test(input);
+      
+      if (!hasValue && !hasAriaLabel && !hasTitle) {
+        issues.push({
+          type: '🔘 Input button without name',
+          description: `Input button ${index + 1} needs value, aria-label, or title`,
+          element: input.substring(0, 100) + '...'
+        });
+      }
+    });
+    
+    return issues;
+  }
+
+  fixButtonNamesInContent(content) {
+    let fixed = content;
+    
+    // Fix empty buttons
+    fixed = fixed.replace(/<button([^>]*)>\s*<\/button>/gi, (match, attributes) => {
+      const hasAriaLabel = /aria-label\s*=/i.test(match);
+      const hasAriaLabelledby = /aria-labelledby\s*=/i.test(match);
+      const hasTitle = /title\s*=/i.test(match);
+      
+      if (!hasAriaLabel && !hasAriaLabelledby && !hasTitle) {
+        console.log(chalk.yellow(`  🔘 Added aria-label to empty button`));
+        return `<button${attributes} aria-label="ボタン">ボタン</button>`;
+      }
+      
+      return match;
+    });
+    
+    // Fix input buttons without value
+    fixed = fixed.replace(/<input([^>]*type\s*=\s*["'](button|submit|reset)["'][^>]*)>/gi, (match, attributes, type) => {
+      const hasValue = /value\s*=/i.test(match);
+      const hasAriaLabel = /aria-label\s*=/i.test(match);
+      const hasTitle = /title\s*=/i.test(match);
+      
+      if (!hasValue && !hasAriaLabel && !hasTitle) {
+        const buttonText = type === 'submit' ? '送信' : type === 'reset' ? 'リセット' : 'ボタン';
+        console.log(chalk.yellow(`  🔘 Added value="${buttonText}" to input ${type} button`));
+        return match.replace(/(<input[^>]*?)(\s*>)/i, `$1 value="${buttonText}"$2`);
+      }
+      
+      return match;
+    });
+    
+    return fixed;
+  }
+
+  // Fix link names
+  async fixLinkNames(directory = '.') {
+    console.log(chalk.blue('🔗 Fixing link names...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeLinkNames(content);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            totalIssuesFound++;
+          });
+        }
+        
+        const fixed = this.fixLinkNamesInContent(content);
+        
+        if (fixed !== content) {
+          if (this.config.backupFiles) {
+            await fs.writeFile(`${file}.backup`, content);
+          }
+          
+          if (!this.config.dryRun) {
+            await fs.writeFile(file, fixed);
+          }
+          
+          console.log(chalk.green(`✅ Fixed link names in: ${file}`));
+          results.push({ file, status: 'fixed', issues: issues.length });
+        } else {
+          results.push({ file, status: 'no-change', issues: issues.length });
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} link name issues across ${results.length} files`));
+    return results;
+  }
+
+  analyzeLinkNames(content) {
+    const issues = [];
+    
+    // Find links without discernible text
+    const linkPattern = /<a[^>]*href[^>]*>[\s\S]*?<\/a>/gi;
+    const links = content.match(linkPattern) || [];
+    
+    links.forEach((link, index) => {
+      const hasAriaLabel = /aria-label\s*=/i.test(link);
+      const hasAriaLabelledby = /aria-labelledby\s*=/i.test(link);
+      const hasTitle = /title\s*=/i.test(link);
+      
+      // Extract text content (excluding images)
+      let textContent = link.replace(/<img[^>]*>/gi, '').replace(/<[^>]*>/g, '').trim();
+      
+      // Check for image alt text if link contains only images
+      if (!textContent) {
+        const imgMatch = link.match(/<img[^>]*alt\s*=\s*["']([^"']+)["'][^>]*>/i);
+        if (imgMatch) {
+          textContent = imgMatch[1].trim();
+        }
+      }
+      
+      if (!textContent && !hasAriaLabel && !hasAriaLabelledby && !hasTitle) {
+        issues.push({
+          type: '🔗 Empty link',
+          description: `Link ${index + 1} has no discernible text`,
+          element: link.substring(0, 100) + '...'
+        });
+      } else if (textContent && (textContent.toLowerCase() === 'click here' || textContent.toLowerCase() === 'read more' || textContent.toLowerCase() === 'here')) {
+        issues.push({
+          type: '🔗 Generic link text',
+          description: `Link ${index + 1} has generic text: "${textContent}"`,
+          element: link.substring(0, 100) + '...'
+        });
+      }
+    });
+    
+    return issues;
+  }
+
+  fixLinkNamesInContent(content) {
+    let fixed = content;
+    
+    // Fix empty links
+    fixed = fixed.replace(/<a([^>]*href[^>]*)>\s*<\/a>/gi, (match, attributes) => {
+      const hasAriaLabel = /aria-label\s*=/i.test(match);
+      const hasAriaLabelledby = /aria-labelledby\s*=/i.test(match);
+      const hasTitle = /title\s*=/i.test(match);
+      
+      if (!hasAriaLabel && !hasAriaLabelledby && !hasTitle) {
+        console.log(chalk.yellow(`  🔗 Added aria-label to empty link`));
+        return `<a${attributes} aria-label="リンク">リンク</a>`;
+      }
+      
+      return match;
+    });
+    
+    // Fix links with only images but no alt text
+    fixed = fixed.replace(/<a([^>]*href[^>]*)>(\s*<img[^>]*>\s*)<\/a>/gi, (match, attributes, imgTag) => {
+      const hasAriaLabel = /aria-label\s*=/i.test(match);
+      const hasAlt = /alt\s*=/i.test(imgTag);
+      
+      if (!hasAriaLabel && !hasAlt) {
+        console.log(chalk.yellow(`  🔗 Added aria-label to image link`));
+        return `<a${attributes} aria-label="画像リンク">${imgTag}</a>`;
+      }
+      
+      return match;
+    });
+    
+    return fixed;
+  }
+
+  // Fix landmarks
+  async fixLandmarks(directory = '.') {
+    console.log(chalk.blue('🏛️ Fixing landmarks...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeLandmarks(content);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            totalIssuesFound++;
+          });
+        }
+        
+        const fixed = this.fixLandmarksInContent(content);
+        
+        if (fixed !== content) {
+          if (this.config.backupFiles) {
+            await fs.writeFile(`${file}.backup`, content);
+          }
+          
+          if (!this.config.dryRun) {
+            await fs.writeFile(file, fixed);
+          }
+          
+          console.log(chalk.green(`✅ Fixed landmarks in: ${file}`));
+          results.push({ file, status: 'fixed', issues: issues.length });
+        } else {
+          results.push({ file, status: 'no-change', issues: issues.length });
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} landmark issues across ${results.length} files`));
+    return results;
+  }
+
+  analyzeLandmarks(content) {
+    const issues = [];
+    
+    // Check for main landmark
+    const hasMain = /<main[^>]*>/i.test(content) || /role\s*=\s*["']main["']/i.test(content);
+    if (!hasMain) {
+      issues.push({
+        type: '🏛️ Missing main landmark',
+        description: 'Page should have a main landmark',
+        suggestion: 'Add <main> element or role="main"'
+      });
+    }
+    
+    // Check for multiple main landmarks
+    const mainCount = (content.match(/<main[^>]*>/gi) || []).length + 
+                     (content.match(/role\s*=\s*["']main["']/gi) || []).length;
+    if (mainCount > 1) {
+      issues.push({
+        type: '🏛️ Multiple main landmarks',
+        description: `Found ${mainCount} main landmarks, should have only one`,
+        suggestion: 'Keep only one main landmark per page'
+      });
+    }
+    
+    // Check for navigation landmarks
+    const hasNav = /<nav[^>]*>/i.test(content) || /role\s*=\s*["']navigation["']/i.test(content);
+    if (!hasNav) {
+      // Look for navigation-like elements
+      const navLikeElements = content.match(/<(?:ul|div)[^>]*class\s*=\s*["'][^"']*(?:nav|menu|navigation)[^"']*["'][^>]*>/gi);
+      if (navLikeElements && navLikeElements.length > 0) {
+        issues.push({
+          type: '🏛️ Missing navigation landmark',
+          description: 'Navigation elements should have nav tag or role="navigation"',
+          suggestion: 'Use <nav> element or add role="navigation"'
+        });
+      }
+    }
+    
+    return issues;
+  }
+
+  fixLandmarksInContent(content) {
+    let fixed = content;
+    
+    // Add main landmark if missing (basic implementation)
+    const hasMain = /<main[^>]*>/i.test(content) || /role\s*=\s*["']main["']/i.test(content);
+    
+    if (!hasMain) {
+      // Look for content containers that could be main
+      const contentPatterns = [
+        /<div[^>]*class\s*=\s*["'][^"']*(?:content|main|container)[^"']*["'][^>]*>/gi,
+        /<section[^>]*class\s*=\s*["'][^"']*(?:content|main)[^"']*["'][^>]*>/gi
+      ];
+      
+      for (const pattern of contentPatterns) {
+        const matches = fixed.match(pattern);
+        if (matches && matches.length === 1) {
+          // Add role="main" to the first suitable container
+          fixed = fixed.replace(pattern, (match) => {
+            if (!/role\s*=/i.test(match)) {
+              console.log(chalk.yellow(`  🏛️ Added role="main" to content container`));
+              return match.replace(/(<(?:div|section)[^>]*?)(\s*>)/i, '$1 role="main"$2');
+            }
+            return match;
+          });
+          break;
+        }
+      }
+    }
+    
+    // Add navigation role to nav-like elements
+    const navPattern = /<(?:ul|div)([^>]*class\s*=\s*["'][^"']*(?:nav|menu|navigation)[^"']*["'][^>]*)>/gi;
+    fixed = fixed.replace(navPattern, (match, attributes) => {
+      if (!/role\s*=/i.test(match)) {
+        console.log(chalk.yellow(`  🏛️ Added role="navigation" to navigation element`));
+        return match.replace(/(<(?:ul|div)[^>]*?)(\s*>)/i, '$1 role="navigation"$2');
+      }
+      return match;
+    });
+    
+    return fixed;
+  }
+
+  // Analyze headings (no auto-fix, only suggestions)
+  async analyzeHeadings(directory = '.') {
+    console.log(chalk.blue('📑 Analyzing heading structure...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeHeadingStructure(content);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            if (issue.suggestion) {
+              console.log(chalk.gray(`    💡 ${issue.suggestion}`));
+            }
+          });
+        }
+        
+        results.push({ file, status: 'analyzed', issues: issues.length, suggestions: issues });
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Analyzed heading structure in ${results.length} files`));
+    console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
+    return results;
+  }
+
+  analyzeHeadingStructure(content) {
+    const issues = [];
+    
+    // Extract all headings with their levels and text
+    const headingPattern = /<h([1-6])[^>]*>([\s\S]*?)<\/h[1-6]>/gi;
+    const headings = [];
+    let match;
+    
+    while ((match = headingPattern.exec(content)) !== null) {
+      const level = parseInt(match[1]);
+      const text = match[2].replace(/<[^>]*>/g, '').trim();
+      headings.push({ level, text, position: match.index });
+    }
+    
+    if (headings.length === 0) {
+      issues.push({
+        type: '📑 No headings found',
+        description: 'Page has no heading elements',
+        suggestion: 'Add heading elements (h1-h6) to structure content'
+      });
+      return issues;
+    }
+    
+    // Check for h1
+    const hasH1 = headings.some(h => h.level === 1);
+    if (!hasH1) {
+      issues.push({
+        type: '📑 Missing h1',
+        description: 'Page should have exactly one h1 element',
+        suggestion: 'Add an h1 element as the main page heading'
+      });
+    }
+    
+    // Check for multiple h1s
+    const h1Count = headings.filter(h => h.level === 1).length;
+    if (h1Count > 1) {
+      issues.push({
+        type: '📑 Multiple h1 elements',
+        description: `Found ${h1Count} h1 elements, should have only one`,
+        suggestion: 'Use only one h1 per page, use h2-h6 for subheadings'
+      });
+    }
+    
+    // Check heading order
+    for (let i = 1; i < headings.length; i++) {
+      const current = headings[i];
+      const previous = headings[i - 1];
+      
+      if (current.level > previous.level + 1) {
+        issues.push({
+          type: '📑 Heading level skip',
+          description: `Heading level jumps from h${previous.level} to h${current.level}`,
+          suggestion: `Use h${previous.level + 1} instead of h${current.level}, or add intermediate headings`
+        });
+      }
+    }
+    
+    // Check for empty headings
+    headings.forEach((heading, index) => {
+      if (!heading.text) {
+        issues.push({
+          type: '📑 Empty heading',
+          description: `Heading ${index + 1} (h${heading.level}) is empty`,
+          suggestion: 'Add descriptive text to the heading or remove it'
+        });
+      }
+    });
+    
+    return issues;
   }
 
   async findHtmlFiles(directory) {

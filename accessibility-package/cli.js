@@ -19,10 +19,14 @@ const options = {
   help: false,
   cleanupOnly: false,
   comprehensive: false, // Keep for backward compatibility
-  basicMode: false, // New option for basic fixes only
   altOnly: false,
   langOnly: false,
-  roleOnly: false
+  roleOnly: false,
+  formsOnly: false,
+  buttonsOnly: false,
+  linksOnly: false,
+  landmarksOnly: false,
+  headingsOnly: false
 };
 
 // Parse arguments
@@ -58,9 +62,6 @@ for (let i = 0; i < args.length; i++) {
     case '--all':
       options.comprehensive = true; // Keep for backward compatibility
       break;
-    case '--basic':
-      options.basicMode = true;
-      break;
     case '--alt-only':
       options.altOnly = true;
       break;
@@ -69,6 +70,21 @@ for (let i = 0; i < args.length; i++) {
       break;
     case '--role-only':
       options.roleOnly = true;
+      break;
+    case '--forms-only':
+      options.formsOnly = true;
+      break;
+    case '--buttons-only':
+      options.buttonsOnly = true;
+      break;
+    case '--links-only':
+      options.linksOnly = true;
+      break;
+    case '--landmarks-only':
+      options.landmarksOnly = true;
+      break;
+    case '--headings-only':
+      options.headingsOnly = true;
       break;
     default:
       if (!arg.startsWith('-')) {
@@ -90,26 +106,31 @@ Options:
   --backup                 Create backup files (default: enabled)
   --no-backup              Don't create backup files
   --dry-run                Preview changes without applying
-  --basic                  Run basic fixes only (without cleanup)
   --comprehensive, --all   Run comprehensive fixes (same as default)
   --cleanup-only           Only cleanup duplicate role attributes
-  --alt-only               Only fix alt attributes for images
-  --lang-only              Only fix HTML lang attributes
-  --role-only              Only fix role attributes
+  --alt-only               Fix alt attributes + cleanup
+  --lang-only              Fix HTML lang attributes + cleanup
+  --role-only              Fix role attributes + cleanup
+  --forms-only             Fix form labels + cleanup
+  --buttons-only           Fix button names + cleanup
+  --links-only             Fix link names + cleanup
+  --landmarks-only         Fix landmarks + cleanup
+  --headings-only          Analyze heading structure (no auto-fix)
   -h, --help               Show this help message
 
 Examples:
   node cli.js                          # Comprehensive fixes (default mode)
-  node cli.js --basic                  # Basic fixes without cleanup
   node cli.js --comprehensive          # Comprehensive fixes (same as default)
-  node cli.js --alt-only               # Only fix alt attributes
-  node cli.js --lang-only              # Only fix lang attributes
-  node cli.js --role-only              # Only fix role attributes
+  node cli.js --alt-only               # Fix alt attributes + cleanup
+  node cli.js --forms-only             # Fix form labels + cleanup
+  node cli.js --buttons-only           # Fix button names + cleanup
+  node cli.js --links-only             # Fix link names + cleanup
+  node cli.js --landmarks-only         # Fix landmarks + cleanup
+  node cli.js --headings-only          # Analyze heading structure only
   node cli.js --cleanup-only           # Only cleanup duplicate roles
   node cli.js ./src                    # Fix src directory (comprehensive)
   node cli.js -l en --dry-run ./dist   # Preview comprehensive fixes in English
   node cli.js --no-backup ./public    # Comprehensive fixes without backups
-  node cli.js --basic --no-backup     # Basic fixes without backups
 
 Features:
   ✅ Alt attributes for images
@@ -121,57 +142,6 @@ Features:
   process.exit(0);
 }
 
-// Helper function to run basic fixes (standard mode without cleanup)
-async function runBasicFixes(fixer, options) {
-  // Fix HTML lang attributes
-  console.log(chalk.yellow('📝 Step 1: Fixing HTML lang attributes...'));
-  const langResults = await fixer.fixHtmlLang(options.directory);
-  const langFixed = langResults.filter(r => r.status === 'fixed').length;
-  console.log(chalk.green(`✅ Fixed lang attributes in ${langFixed} files`));
-  console.log('');
-
-  // Fix alt attributes
-  console.log(chalk.yellow('🖼️  Step 2: Fixing alt attributes...'));
-  const altResults = await fixer.fixEmptyAltAttributes(options.directory);
-  const altFixed = altResults.filter(r => r.status === 'fixed').length;
-  const totalAltIssues = altResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-  console.log(chalk.green(`✅ Fixed alt attributes in ${altFixed} files (${totalAltIssues} issues)`));
-  console.log('');
-
-  // Fix role attributes
-  console.log(chalk.yellow('🎭 Step 3: Fixing role attributes...'));
-  const roleResults = await fixer.fixRoleAttributes(options.directory);
-  const roleFixed = roleResults.filter(r => r.status === 'fixed').length;
-  const totalRoleIssues = roleResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-  console.log(chalk.green(`✅ Fixed role attributes in ${roleFixed} files (${totalRoleIssues} issues)`));
-  console.log('');
-
-  // Summary
-  const totalFiles = new Set([
-    ...langResults.map(r => r.file),
-    ...altResults.map(r => r.file),
-    ...roleResults.map(r => r.file)
-  ]).size;
-
-  const totalFixed = new Set([
-    ...langResults.filter(r => r.status === 'fixed').map(r => r.file),
-    ...altResults.filter(r => r.status === 'fixed').map(r => r.file),
-    ...roleResults.filter(r => r.status === 'fixed').map(r => r.file)
-  ]).size;
-
-  const totalIssues = totalAltIssues + totalRoleIssues + langFixed;
-
-  console.log(chalk.blue('📊 Summary:'));
-  console.log(chalk.white(`   Total files scanned: ${totalFiles}`));
-  console.log(chalk.green(`   Files fixed: ${totalFixed}`));
-  console.log(chalk.yellow(`   Total issues resolved: ${totalIssues}`));
-  
-  showCompletionMessage(options, 'Basic accessibility fixes');
-  
-  // Suggest comprehensive mode
-  console.log(chalk.blue('\n💡 Pro tip: Default mode now includes comprehensive fixes with cleanup!'));
-  console.log(chalk.gray('   Use --basic to run this mode again, or remove --basic for comprehensive fixes.'));
-}
 
 // Helper function to show completion message with backup info
 function showCompletionMessage(options, mode = 'fixes') {
@@ -205,19 +175,13 @@ async function main() {
   });
 
   try {
-    // Handle different modes - Comprehensive is now the default
-    if (options.cleanupOnly || options.altOnly || options.langOnly || options.roleOnly) {
-      // Individual modes - handle each separately
-    } else if (options.basicMode) {
-      // Basic mode: Run standard fixes (without cleanup)
-      console.log(chalk.blue('📝 Running basic accessibility fixes...'));
-      
-      // Run standard fixes without cleanup
-      await runBasicFixes(fixer, options);
-      return;
+    // Handle different modes - All modes now include cleanup
+    if (options.cleanupOnly || options.altOnly || options.langOnly || options.roleOnly || 
+        options.formsOnly || options.buttonsOnly || options.linksOnly || options.landmarksOnly || options.headingsOnly) {
+      // Individual modes - handle each separately, then run cleanup
     } else {
       // Default mode: Run comprehensive fix (all fixes including cleanup)
-      console.log(chalk.blue('🎯 Running comprehensive accessibility fixes (default mode)...'));
+      console.log(chalk.blue('🎯 Running comprehensive accessibility fixes...'));
       const results = await fixer.fixAllAccessibilityIssues(options.directory);
       
       // Results already logged in the method
@@ -248,38 +212,140 @@ async function main() {
       return;
       
     } else if (options.altOnly) {
-      // Only fix alt attributes
-      console.log(chalk.blue('🖼️ Running alt attribute fixes only...'));
+      // Fix alt attributes + cleanup
+      console.log(chalk.blue('🖼️ Running alt attribute fixes + cleanup...'));
       const altResults = await fixer.fixEmptyAltAttributes(options.directory);
       const altFixed = altResults.filter(r => r.status === 'fixed').length;
       const totalAltIssues = altResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       
       console.log(chalk.green(`\n✅ Fixed alt attributes in ${altFixed} files (${totalAltIssues} issues)`));
       
-      showCompletionMessage(options, 'Alt attribute fixes');
+      // Run cleanup
+      console.log(chalk.blue('\n🧹 Running cleanup for duplicate role attributes...'));
+      const cleanupResults = await fixer.cleanupDuplicateRoles(options.directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
+      
+      showCompletionMessage(options, 'Alt attribute fixes + cleanup');
       return;
       
     } else if (options.langOnly) {
-      // Only fix lang attributes
-      console.log(chalk.blue('📝 Running HTML lang attribute fixes only...'));
+      // Fix lang attributes + cleanup
+      console.log(chalk.blue('📝 Running HTML lang attribute fixes + cleanup...'));
       const langResults = await fixer.fixHtmlLang(options.directory);
       const langFixed = langResults.filter(r => r.status === 'fixed').length;
       
       console.log(chalk.green(`\n✅ Fixed lang attributes in ${langFixed} files`));
       
-      showCompletionMessage(options, 'Lang attribute fixes');
+      // Run cleanup
+      console.log(chalk.blue('\n🧹 Running cleanup for duplicate role attributes...'));
+      const cleanupResults = await fixer.cleanupDuplicateRoles(options.directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
+      
+      showCompletionMessage(options, 'Lang attribute fixes + cleanup');
       return;
       
     } else if (options.roleOnly) {
-      // Only fix role attributes
-      console.log(chalk.blue('🎭 Running role attribute fixes only...'));
+      // Fix role attributes + cleanup
+      console.log(chalk.blue('🎭 Running role attribute fixes + cleanup...'));
       const roleResults = await fixer.fixRoleAttributes(options.directory);
       const roleFixed = roleResults.filter(r => r.status === 'fixed').length;
       const totalRoleIssues = roleResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       
       console.log(chalk.green(`\n✅ Fixed role attributes in ${roleFixed} files (${totalRoleIssues} issues)`));
       
-      showCompletionMessage(options, 'Role attribute fixes');
+      // Run cleanup
+      console.log(chalk.blue('\n🧹 Running cleanup for duplicate role attributes...'));
+      const cleanupResults = await fixer.cleanupDuplicateRoles(options.directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
+      
+      showCompletionMessage(options, 'Role attribute fixes + cleanup');
+      return;
+      
+    } else if (options.formsOnly) {
+      // Fix form labels + cleanup
+      console.log(chalk.blue('📋 Running form label fixes + cleanup...'));
+      const formResults = await fixer.fixFormLabels(options.directory);
+      const formFixed = formResults.filter(r => r.status === 'fixed').length;
+      const totalFormIssues = formResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      
+      console.log(chalk.green(`\n✅ Fixed form labels in ${formFixed} files (${totalFormIssues} issues)`));
+      
+      // Run cleanup
+      console.log(chalk.blue('\n🧹 Running cleanup for duplicate role attributes...'));
+      const cleanupResults = await fixer.cleanupDuplicateRoles(options.directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
+      
+      showCompletionMessage(options, 'Form label fixes + cleanup');
+      return;
+      
+    } else if (options.buttonsOnly) {
+      // Fix button names + cleanup
+      console.log(chalk.blue('🔘 Running button name fixes + cleanup...'));
+      const buttonResults = await fixer.fixButtonNames(options.directory);
+      const buttonFixed = buttonResults.filter(r => r.status === 'fixed').length;
+      const totalButtonIssues = buttonResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      
+      console.log(chalk.green(`\n✅ Fixed button names in ${buttonFixed} files (${totalButtonIssues} issues)`));
+      
+      // Run cleanup
+      console.log(chalk.blue('\n🧹 Running cleanup for duplicate role attributes...'));
+      const cleanupResults = await fixer.cleanupDuplicateRoles(options.directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
+      
+      showCompletionMessage(options, 'Button name fixes + cleanup');
+      return;
+      
+    } else if (options.linksOnly) {
+      // Fix link names + cleanup
+      console.log(chalk.blue('🔗 Running link name fixes + cleanup...'));
+      const linkResults = await fixer.fixLinkNames(options.directory);
+      const linkFixed = linkResults.filter(r => r.status === 'fixed').length;
+      const totalLinkIssues = linkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      
+      console.log(chalk.green(`\n✅ Fixed link names in ${linkFixed} files (${totalLinkIssues} issues)`));
+      
+      // Run cleanup
+      console.log(chalk.blue('\n🧹 Running cleanup for duplicate role attributes...'));
+      const cleanupResults = await fixer.cleanupDuplicateRoles(options.directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
+      
+      showCompletionMessage(options, 'Link name fixes + cleanup');
+      return;
+      
+    } else if (options.landmarksOnly) {
+      // Fix landmarks + cleanup
+      console.log(chalk.blue('🏛️ Running landmark fixes + cleanup...'));
+      const landmarkResults = await fixer.fixLandmarks(options.directory);
+      const landmarkFixed = landmarkResults.filter(r => r.status === 'fixed').length;
+      const totalLandmarkIssues = landmarkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      
+      console.log(chalk.green(`\n✅ Fixed landmarks in ${landmarkFixed} files (${totalLandmarkIssues} issues)`));
+      
+      // Run cleanup
+      console.log(chalk.blue('\n🧹 Running cleanup for duplicate role attributes...'));
+      const cleanupResults = await fixer.cleanupDuplicateRoles(options.directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
+      
+      showCompletionMessage(options, 'Landmark fixes + cleanup');
+      return;
+      
+    } else if (options.headingsOnly) {
+      // Analyze headings only (no fixes, no cleanup)
+      console.log(chalk.blue('📑 Running heading analysis only...'));
+      const headingResults = await fixer.analyzeHeadings(options.directory);
+      const totalSuggestions = headingResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      
+      console.log(chalk.green(`\n✅ Analyzed headings in ${headingResults.length} files (${totalSuggestions} suggestions)`));
+      console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
+      
+      showCompletionMessage(options, 'Heading analysis');
       return;
     }
 

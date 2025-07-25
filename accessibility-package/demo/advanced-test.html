@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Advanced Accessibility Test</title>
+</head>
+<body>
+    <h1>Advanced Accessibility Test</h1>
+    
+    <!-- Form issues -->
+    <form>
+        <input type="text" placeholder="Name">
+        <input type="email" id="email">
+        <input type="password">
+        <input type="submit">
+    </form>
+    
+    <!-- Button issues -->
+    <button></button>
+    <button onclick="alert('test')"></button>
+    <input type="button">
+    
+    <!-- Link issues -->
+    <a href="/home"></a>
+    <a href="/more">Click here</a>
+    <a href="/read">Read more</a>
+    <a href="/image"><img src="icon.png"></a>
+    
+    <!-- Heading issues -->
+    <h3>Skipped h2</h3>
+    <h1>Second h1</h1>
+    <h4></h4>
+    
+    <!-- Landmark issues -->
+    <div class="content">
+        <p>Main content without landmark</p>
+    </div>
+    
+    <ul class="navigation">
+        <li><a href="/home">Home</a></li>
+        <li><a href="/about">About</a></li>
+    </ul>
+</body>
+</html>

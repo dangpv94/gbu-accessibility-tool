@@ -42,9 +42,6 @@ gbu-a11y --dry-run
 # Fix specific directory
 gbu-a11y ./src
 
-# Basic fixes only (without cleanup)
-gbu-a11y --basic
-
 # Fix specific file
 gbu-a11y index.html
 ```
@@ -62,12 +59,11 @@ Options:
   --backup                 Create backup files (default: enabled)
   --no-backup              Don't create backup files
   --dry-run                Preview changes without applying
-  --basic                  Run basic fixes only (without cleanup)
   --comprehensive, --all   Run comprehensive fixes (same as default)
   --cleanup-only           Only cleanup duplicate role attributes
-  --alt-only               Only fix alt attributes for images
-  --lang-only              Only fix HTML lang attributes
-  --role-only              Only fix role attributes
+  --alt-only               Fix alt attributes + cleanup
+  --lang-only              Fix HTML lang attributes + cleanup
+  --role-only              Fix role attributes + cleanup
   -h, --help               Show help message
 ```
 
@@ -80,21 +76,18 @@ gbu-a11y
 # Preview all changes (comprehensive by default)
 gbu-a11y --dry-run
 
-# Basic fixes only (without cleanup)
-gbu-a11y --basic
-
 # Fix with English language
 gbu-a11y -l en ./public
 
-# Individual fix types
-gbu-a11y --alt-only          # Only fix alt attributes
-gbu-a11y --lang-only         # Only fix lang attributes
-gbu-a11y --role-only         # Only fix role attributes
+# Individual fix types (all include cleanup)
+gbu-a11y --alt-only          # Fix alt attributes + cleanup
+gbu-a11y --lang-only         # Fix lang attributes + cleanup
+gbu-a11y --role-only         # Fix role attributes + cleanup
 gbu-a11y --cleanup-only      # Only cleanup duplicates
 
 # Combine with other options
-gbu-a11y --alt-only --dry-run ./src    # Preview alt fixes only
-gbu-a11y --basic -l en ./public        # Basic fixes with English lang
+gbu-a11y --alt-only --dry-run ./src    # Preview alt fixes + cleanup
+gbu-a11y --role-only -l en ./public    # Role fixes + cleanup with English lang
 
 # Backup options
 gbu-a11y --backup ./dist             # Explicitly enable backups (default)
@@ -312,6 +305,7 @@ The package uses intelligent context analysis to generate meaningful alt text:
 ## 🔒 Safety Features
 
 ### Backup Options
+
 - **Default behavior**: Creates `.backup` files automatically for safety
 - **Disable backups**: Use `--no-backup` for faster processing
 - **Explicit enable**: Use `--backup` to be explicit about backup creation
@@ -328,6 +322,7 @@ gbu-a11y --backup --comprehensive
 ```
 
 ### Other Safety Features
+
 - **Dry run mode** for safe previewing with `--dry-run`
 - **Non-destructive** - only adds missing attributes
 - **Duplicate prevention** - won't add existing attributes
