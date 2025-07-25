@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2024-07-25
+
+### Changed
+- **BREAKING**: Default behavior now **no backup files** for faster processing
+- **Backup is now optional**: Use `--backup` flag when you need backup files
+- **Performance improvement**: Faster processing by default without backup creation
+- **CLI help updated**: Reflects new default behavior
+- **Documentation updated**: README and README-vi updated with new backup behavior
+
+### Migration Guide
+- **No action needed for most users** - you get faster processing by default
+- **If you want backup files**: Add `--backup` flag to your commands
+- **Old behavior**: `gbu-a11y` (created backups) → **New behavior**: `gbu-a11y --backup`
+- **Scripts using --no-backup**: Can remove the flag (now default behavior)
+
 ## [3.0.0] - 2024-07-25
 
 ### Added

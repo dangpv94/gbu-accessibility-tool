@@ -19,7 +19,7 @@
 - 📑 **Heading Analysis** - Analyze heading structure with suggestions (no auto-fix)
 - 🧹 **Duplicate Cleanup** - Remove duplicate role attributes
 - 📁 **Batch Processing** - Process entire directories recursively
-- 💾 **Automatic Backups** - Safe modifications with backup files
+- 💾 **Optional Backups** - Create backup files when needed with --backup flag
 - 🔍 **Dry Run Mode** - Preview changes before applying
 - 📊 **Detailed Reports** - Comprehensive fix summaries
 
@@ -61,8 +61,8 @@ gbu-a11y [options] [directory/file]
 Options:
   -d, --directory <path>    Target directory (default: current directory)
   -l, --language <lang>     Language for lang attribute (default: ja)
-  --backup                 Create backup files (default: enabled)
-  --no-backup              Don't create backup files
+  --backup                 Create backup files
+  --no-backup              Don't create backup files (default)
   --dry-run                Preview changes without applying
   --comprehensive, --all   Run comprehensive fixes (same as default)
   --cleanup-only           Only cleanup duplicate role attributes
@@ -103,8 +103,8 @@ gbu-a11y --alt-only --dry-run ./src    # Preview alt fixes + cleanup
 gbu-a11y --forms-only -l en ./public   # Form fixes + cleanup with English lang
 
 # Backup options
-gbu-a11y --backup ./dist             # Explicitly enable backups (default)
-gbu-a11y --no-backup ./dist          # Disable backups for faster processing
+gbu-a11y --backup ./dist             # Enable backups for safety
+gbu-a11y --no-backup ./dist          # Disable backups (default - faster processing)
 ```
 
 ## 🔧 Programmatic Usage
@@ -367,19 +367,19 @@ The package uses intelligent context analysis to generate meaningful alt text:
 ## 🔒 Safety Features
 
 ### Backup Options
-- **Default behavior**: Creates `.backup` files automatically for safety
-- **Disable backups**: Use `--no-backup` for faster processing
-- **Explicit enable**: Use `--backup` to be explicit about backup creation
+- **Default behavior**: No backup files for faster processing
+- **Enable backups**: Use `--backup` for safety when needed
+- **Explicit disable**: Use `--no-backup` to be explicit (same as default)
 
 ```bash
-# Safe mode (default) - creates backups
+# Fast mode (default) - no backups
 gbu-a11y --comprehensive
 
-# Fast mode - no backups
-gbu-a11y --no-backup --comprehensive
-
-# Explicit backup mode
+# Safe mode - creates backups
 gbu-a11y --backup --comprehensive
+
+# Explicit no backup mode (same as default)
+gbu-a11y --no-backup --comprehensive
 ```
 
 ### Other Safety Features

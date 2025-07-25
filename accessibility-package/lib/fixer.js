@@ -10,7 +10,7 @@ const chalk = require('chalk');
 class AccessibilityFixer {
   constructor(config = {}) {
     this.config = {
-      backupFiles: config.backupFiles !== false,
+      backupFiles: config.backupFiles === true,
       language: config.language || 'ja',
       dryRun: config.dryRun || false,
       ...config

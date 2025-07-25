@@ -19,7 +19,7 @@
 - 📑 **Phân tích Headings** - Phân tích cấu trúc heading với đề xuất
 - 🧹 **Dọn dẹp trùng lặp** - Xóa role attributes trùng lặp
 - 📁 **Xử lý hàng loạt** - Xử lý toàn bộ thư mục đệ quy
-- 💾 **Backup tự động** - Sửa đổi an toàn với file backup
+- 💾 **Backup tùy chọn** - Tạo file backup khi cần với flag --backup
 - 🔍 **Chế độ xem trước** - Xem trước thay đổi trước khi áp dụng
 - 📊 **Báo cáo chi tiết** - Tóm tắt sửa chữa toàn diện
 
@@ -61,8 +61,8 @@ gbu-a11y [options] [directory/file]
 Tùy chọn:
   -d, --directory <path>    Thư mục đích (mặc định: thư mục hiện tại)
   -l, --language <lang>     Ngôn ngữ cho thuộc tính lang (mặc định: ja)
-  --backup                 Tạo file backup (mặc định: bật)
-  --no-backup              Không tạo file backup
+  --backup                 Tạo file backup
+  --no-backup              Không tạo file backup (mặc định)
   --dry-run                Xem trước thay đổi mà không áp dụng
   --comprehensive, --all   Chạy sửa toàn diện (giống mặc định)
   --cleanup-only           Chỉ dọn dẹp role attributes trùng lặp
@@ -103,28 +103,28 @@ gbu-a11y --alt-only --dry-run ./src    # Xem trước sửa alt
 gbu-a11y --forms-only -l en ./public   # Sửa form với tiếng Anh
 
 # Tùy chọn backup
-gbu-a11y --backup ./dist             # Bật backup rõ ràng (mặc định)
-gbu-a11y --no-backup ./dist          # Tắt backup để xử lý nhanh hơn
+gbu-a11y --backup ./dist             # Bật backup để an toàn
+gbu-a11y --no-backup ./dist          # Tắt backup (mặc định - xử lý nhanh hơn)
 ```
 
 ## 🔧 Sử dụng lập trình
 
 ```javascript
-const AccessibilityFixer = require('gbu-accessibility-package');
+const AccessibilityFixer = require("gbu-accessibility-package");
 
 const fixer = new AccessibilityFixer({
-  language: 'vi',
+  language: "vi",
   backupFiles: true,
-  dryRun: false
+  dryRun: false,
 });
 
 // Sửa tất cả vấn đề accessibility
 async function fixAccessibility() {
   try {
-    const results = await fixer.fixAllAccessibilityIssues('./src');
-    console.log('File đã sửa:', results);
+    const results = await fixer.fixAllAccessibilityIssues("./src");
+    console.log("File đã sửa:", results);
   } catch (error) {
-    console.error('Lỗi:', error);
+    console.error("Lỗi:", error);
   }
 }
 
@@ -134,6 +134,7 @@ fixAccessibility();
 ## 🎯 Chế độ sửa
 
 ### Chế độ toàn diện (Mặc định)
+
 Chạy tất cả các bước sửa bao gồm dọn dẹp:
 
 1. **HTML lang attributes** - Thêm thuộc tính ngôn ngữ
@@ -147,6 +148,7 @@ Chạy tất cả các bước sửa bao gồm dọn dẹp:
 9. **Cleanup** - Dọn dẹp role attributes trùng lặp
 
 ### Chế độ riêng lẻ
+
 Mỗi chế độ riêng lẻ đều bao gồm bước dọn dẹp:
 
 - `--alt-only` - Chỉ sửa alt attributes + dọn dẹp
@@ -159,35 +161,40 @@ Mỗi chế độ riêng lẻ đều bao gồm bước dọn dẹp:
 ## 🔧 Những gì được sửa
 
 ### 1. Alt Attributes
+
 - **Alt attributes thiếu** → Thêm alt text theo ngữ cảnh
 - **Alt attributes rỗng** → Tạo mô tả có ý nghĩa
 - **Tạo theo ngữ cảnh** → Sử dụng text xung quanh, tiêu đề, chú thích
 
 ```html
 <!-- Trước -->
-<img src="logo.png">
-<img src="chart.jpg" alt="">
+<img src="logo.png" />
+<img src="chart.jpg" alt="" />
 
 <!-- Sau -->
-<img src="logo.png" alt="ロゴ" role="img" aria-label="ロゴ">
-<img src="chart.jpg" alt="グラフ" role="img" aria-label="グラフ">
+<img src="logo.png" alt="ロゴ" role="img" aria-label="ロゴ" />
+<img src="chart.jpg" alt="グラフ" role="img" aria-label="グラフ" />
 ```
 
 ### 2. HTML Lang Attributes
+
 - **Lang attributes thiếu** → Thêm ngôn ngữ được chỉ định
 - **Lang attributes rỗng** → Đặt mã ngôn ngữ phù hợp
 
 ```html
 <!-- Trước -->
 <html>
-<html lang="">
-
-<!-- Sau -->
-<html lang="ja">
-<html lang="ja">
+  <html lang="">
+    <!-- Sau -->
+    <html lang="ja">
+      <html lang="ja"></html>
+    </html>
+  </html>
+</html>
 ```
 
 ### 3. Role Attributes & Aria Labels
+
 - **Images** → `role="img"` + `aria-label` (khớp với alt text)
 - **Picture elements** → Di chuyển `role="img"` từ `<picture>` vào `<img>` bên trong
 - **Links** → `role="link"`
@@ -197,55 +204,58 @@ Mỗi chế độ riêng lẻ đều bao gồm bước dọn dẹp:
 
 ```html
 <!-- Trước -->
-<img src="icon.png" alt="Icon">
+<img src="icon.png" alt="Icon" />
 <picture role="img">
-  <img src="photo.jpg" alt="Photo">
+  <img src="photo.jpg" alt="Photo" />
 </picture>
 <a href="/home">Home</a>
 <div class="btn-click">Click me</div>
 
 <!-- Sau -->
-<img src="icon.png" alt="Icon" role="img" aria-label="Icon">
+<img src="icon.png" alt="Icon" role="img" aria-label="Icon" />
 <picture>
-  <img src="photo.jpg" alt="Photo" role="img" aria-label="Photo">
+  <img src="photo.jpg" alt="Photo" role="img" aria-label="Photo" />
 </picture>
 <a href="/home" role="link">Home</a>
 <div class="btn-click" role="button">Click me</div>
 ```
 
 ### 4. Form Labels
+
 - **Input thiếu label** → Thêm `aria-label` phù hợp
 - **Hỗ trợ nhiều loại input** → text, email, password, tel, etc.
 
 ```html
 <!-- Trước -->
-<input type="text" placeholder="Name">
-<input type="email">
-<input type="password">
+<input type="text" placeholder="Name" />
+<input type="email" />
+<input type="password" />
 
 <!-- Sau -->
-<input type="text" placeholder="Name" aria-label="テキスト入力">
-<input type="email" aria-label="メールアドレス">
-<input type="password" aria-label="パスワード">
+<input type="text" placeholder="Name" aria-label="テキスト入力" />
+<input type="email" aria-label="メールアドレス" />
+<input type="password" aria-label="パスワード" />
 ```
 
 ### 5. Button Names
+
 - **Button rỗng** → Thêm text và aria-label
 - **Input button thiếu value** → Thêm value phù hợp
 
 ```html
 <!-- Trước -->
 <button></button>
-<input type="submit">
-<input type="button">
+<input type="submit" />
+<input type="button" />
 
 <!-- Sau -->
 <button aria-label="ボタン">ボタン</button>
-<input type="submit" value="送信">
-<input type="button" value="ボタン">
+<input type="submit" value="送信" />
+<input type="button" value="ボタン" />
 ```
 
 ### 6. Link Names
+
 - **Link rỗng** → Thêm aria-label
 - **Generic text** → Phát hiện "Click here", "Read more"
 - **Image links** → Xử lý link chỉ chứa hình ảnh
@@ -254,15 +264,17 @@ Mỗi chế độ riêng lẻ đều bao gồm bước dọn dẹp:
 <!-- Trước -->
 <a href="/home"></a>
 <a href="/more">Click here</a>
-<a href="/image"><img src="icon.png"></a>
+<a href="/image"><img src="icon.png" /></a>
 
 <!-- Sau -->
 <a href="/home" aria-label="リンク">リンク</a>
-<a href="/more">Click here</a> <!-- Được phát hiện nhưng không tự động sửa -->
-<a href="/image" aria-label="画像リンク"><img src="icon.png"></a>
+<a href="/more">Click here</a>
+<!-- Được phát hiện nhưng không tự động sửa -->
+<a href="/image" aria-label="画像リンク"><img src="icon.png" /></a>
 ```
 
 ### 7. Landmarks
+
 - **Main landmark thiếu** → Thêm `role="main"`
 - **Navigation landmark thiếu** → Thêm `role="navigation"`
 
@@ -285,26 +297,29 @@ Mỗi chế độ riêng lẻ đều bao gồm bước dọn dẹp:
 ```
 
 ### 8. Heading Analysis
+
 - **Multiple h1** → Phát hiện và đề xuất
 - **Heading level skip** → Phát hiện nhảy cấp (h1 → h3)
 - **Empty headings** → Phát hiện heading rỗng
 - **Chỉ phân tích, không tự động sửa** → An toàn cho cấu trúc nội dung
 
 ### 9. Aria Label Enhancement
+
 - **Tự động aria-label** → Thêm `aria-label` khớp với `alt` text cho images
 - **Bảo tồn hiện có** → Không ghi đè `aria-label` đã có
 - **Phát hiện thông minh** → Chỉ thêm khi `alt` text tồn tại và không rỗng
 
 ### 10. Dọn dẹp trùng lặp
+
 - **Xóa role attributes trùng lặp** → Giữ lại occurrence đầu tiên
 - **Xử lý mixed quotes** → role="button" role='button'
 
 ```html
 <!-- Trước -->
-<img src="test.jpg" role="img" role="img" alt="Test">
+<img src="test.jpg" role="img" role="img" alt="Test" />
 
 <!-- Sau -->
-<img src="test.jpg" role="img" alt="Test">
+<img src="test.jpg" role="img" alt="Test" />
 ```
 
 ## 🌟 Tạo Alt Text thông minh
@@ -312,8 +327,9 @@ Mỗi chế độ riêng lẻ đều bao gồm bước dọn dẹp:
 Package sử dụng phân tích ngữ cảnh thông minh để tạo alt text có ý nghĩa:
 
 ### Nguồn ngữ cảnh
+
 1. **Title attributes**
-2. **Aria-label attributes**  
+2. **Aria-label attributes**
 3. **Definition terms (dt elements)**
 4. **Parent link text**
 5. **Nearby headings**
@@ -321,6 +337,7 @@ Package sử dụng phân tích ngữ cảnh thông minh để tạo alt text c�
 7. **Surrounding text content**
 
 ### Mẫu dự phòng
+
 - `logo.png` → "ロゴ" (Logo)
 - `icon.svg` → "アイコン" (Icon)
 - `banner.jpg` → "バナー" (Banner)
@@ -330,6 +347,7 @@ Package sử dụng phân tích ngữ cảnh thông minh để tạo alt text c�
 ## 📊 Ví dụ đầu ra
 
 ### Chế độ toàn diện
+
 ```
 🚀 Starting Accessibility Fixer...
 🎯 Running comprehensive accessibility fixes...
@@ -340,7 +358,7 @@ Package sử dụng phân tích ngữ cảnh thông minh để tạo alt text c�
 🖼️ Step 2: Alt attributes...
 ✅ Fixed alt attributes in 12 files (34 issues)
 
-🎭 Step 3: Role attributes...  
+🎭 Step 3: Role attributes...
 ✅ Fixed role attributes in 8 files (67 issues)
 
 📋 Step 4: Form labels...
@@ -369,6 +387,7 @@ Package sử dụng phân tích ngữ cảnh thông minh để tạo alt text c�
 ```
 
 ### Chế độ riêng lẻ
+
 ```
 🚀 Starting Accessibility Fixer...
 📋 Running form label fixes + cleanup...
@@ -392,22 +411,24 @@ Package sử dụng phân tích ngữ cảnh thông minh để tạo alt text c�
 ## 🔒 Tính năng an toàn
 
 ### Tùy chọn Backup
-- **Hành vi mặc định**: Tự động tạo file `.backup` để an toàn
-- **Tắt backup**: Sử dụng `--no-backup` để xử lý nhanh hơn
-- **Bật rõ ràng**: Sử dụng `--backup` để rõ ràng về việc tạo backup
+
+- **Hành vi mặc định**: Không tạo backup files để xử lý nhanh hơn
+- **Bật backup**: Sử dụng `--backup` để an toàn khi cần
+- **Tắt rõ ràng**: Sử dụng `--no-backup` để rõ ràng (giống mặc định)
 
 ```bash
-# Chế độ an toàn (mặc định) - tạo backup
+# Chế độ nhanh (mặc định) - không backup
 gbu-a11y --comprehensive
 
-# Chế độ nhanh - không backup
-gbu-a11y --no-backup --comprehensive
-
-# Chế độ backup rõ ràng
+# Chế độ an toàn - tạo backup
 gbu-a11y --backup --comprehensive
+
+# Chế độ không backup rõ ràng (giống mặc định)
+gbu-a11y --no-backup --comprehensive
 ```
 
 ### Các tính năng an toàn khác
+
 - **Chế độ xem trước** để xem trước an toàn với `--dry-run`
 - **Không phá hoại** - chỉ thêm attributes thiếu
 - **Ngăn chặn trùng lặp** - không thêm attributes đã có
@@ -502,6 +523,7 @@ npm update -g gbu-accessibility-package
 ## 🛠️ Cấu hình
 
 ### Package.json Scripts
+
 ```json
 {
   "scripts": {
@@ -520,12 +542,13 @@ npm update -g gbu-accessibility-package
 ```
 
 ### Tích hợp CI/CD
+
 ```yaml
 # Ví dụ GitHub Actions
 - name: Check Accessibility
   run: npx gbu-accessibility-package --dry-run
 
-- name: Fix Accessibility Issues  
+- name: Fix Accessibility Issues
   run: npx gbu-accessibility-package --comprehensive
 ```
 
@@ -546,6 +569,7 @@ Dự án này được cấp phép theo Giấy phép MIT - xem file [LICENSE](LI
 ### Các vấn đề thường gặp và giải pháp
 
 #### Package không tìm thấy hoặc lệnh không hoạt động
+
 ```bash
 # Kiểm tra package đã cài global chưa
 npm list -g gbu-accessibility-package
@@ -561,6 +585,7 @@ export PATH=$PATH:$(npm config get prefix)/bin
 ```
 
 #### Lỗi quyền truy cập
+
 ```bash
 # macOS/Linux: Sửa quyền npm
 sudo chown -R $(whoami) ~/.npm
@@ -573,6 +598,7 @@ npx gbu-accessibility-package --help
 ```
 
 #### Package không hoạt động sau khi cập nhật
+
 ```bash
 # Cài đặt lại hoàn toàn
 npm uninstall -g gbu-accessibility-package
@@ -585,6 +611,7 @@ which gbu-a11y
 ```
 
 #### File không được xử lý
+
 ```bash
 # Kiểm tra phần mở rộng file (chỉ hỗ trợ .html)
 ls -la *.html
@@ -597,6 +624,7 @@ gbu-a11y --dry-run your-file.html
 ```
 
 #### File backup tích tụ quá nhiều
+
 ```bash
 # Xóa tất cả file backup
 find . -name "*.backup" -type f -delete
@@ -609,6 +637,7 @@ echo 'alias cleanup-backups="find . -name \"*.backup\" -type f -delete"' >> ~/.b
 ```
 
 #### Vấn đề hiệu suất
+
 ```bash
 # Sử dụng --no-backup để xử lý nhanh hơn
 gbu-a11y --no-backup
@@ -621,6 +650,7 @@ gbu-a11y --alt-only ./images
 ```
 
 #### Vấn đề phiên bản Node.js
+
 ```bash
 # Kiểm tra phiên bản Node.js (yêu cầu >=12.0.0)
 node --version
@@ -666,6 +696,7 @@ Nếu bạn vẫn gặp vấn đề:
 Package này giải quyết các vấn đề accessibility phổ biến từ axe DevTools:
 
 ### ✅ Đã hỗ trợ
+
 - `image-alt` - Images must have alternate text
 - `html-has-lang` - HTML element must have lang attribute
 - `label` - Form elements must have labels (cơ bản)
@@ -677,6 +708,7 @@ Package này giải quyết các vấn đề accessibility phổ biến từ axe
 - Duplicate role attributes cleanup
 
 ### 🔄 Đang phát triển
+
 - `color-contrast` - Color contrast checking
 - `focus-order-semantics` - Focus order validation
 - `aria-*` attributes validation

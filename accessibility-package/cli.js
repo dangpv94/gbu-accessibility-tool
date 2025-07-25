@@ -14,7 +14,7 @@ const args = process.argv.slice(2);
 const options = {
   directory: '.',
   language: 'ja',
-  backupFiles: true, // Default to true for safety
+  backupFiles: false, // Default to false for faster processing
   dryRun: false,
   help: false,
   cleanupOnly: false,
@@ -103,8 +103,8 @@ Usage: node cli.js [options] [directory]
 Options:
   -d, --directory <path>    Target directory (default: current directory)
   -l, --language <lang>     Language for lang attribute (default: ja)
-  --backup                 Create backup files (default: enabled)
-  --no-backup              Don't create backup files
+  --backup                 Create backup files
+  --no-backup              Don't create backup files (default)
   --dry-run                Preview changes without applying
   --comprehensive, --all   Run comprehensive fixes (same as default)
   --cleanup-only           Only cleanup duplicate role attributes
@@ -119,7 +119,7 @@ Options:
   -h, --help               Show this help message
 
 Examples:
-  node cli.js                          # Comprehensive fixes (default mode)
+  node cli.js                          # Comprehensive fixes (no backup by default)
   node cli.js --comprehensive          # Comprehensive fixes (same as default)
   node cli.js --alt-only               # Fix alt attributes + cleanup
   node cli.js --forms-only             # Fix form labels + cleanup
@@ -130,7 +130,7 @@ Examples:
   node cli.js --cleanup-only           # Only cleanup duplicate roles
   node cli.js ./src                    # Fix src directory (comprehensive)
   node cli.js -l en --dry-run ./dist   # Preview comprehensive fixes in English
-  node cli.js --no-backup ./public    # Comprehensive fixes without backups
+  node cli.js --backup ./public       # Comprehensive fixes with backups
 
 Features:
   ✅ Alt attributes for images
@@ -153,7 +153,7 @@ function showCompletionMessage(options, mode = 'fixes') {
       console.log(chalk.gray('   📁 Backup files created with .backup extension'));
       console.log(chalk.gray('   💡 Use --no-backup to disable backups in future runs'));
     } else {
-      console.log(chalk.yellow('   ⚠️  No backup files created (--no-backup was used)'));
+      console.log(chalk.blue('   ⚡ No backup files created (default behavior for faster processing)'));
       console.log(chalk.gray('   💡 Use --backup to enable backups for safety'));
     }
   }
