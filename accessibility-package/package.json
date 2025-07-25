@@ -1,6 +1,6 @@
 {
   "name": "gbu-accessibility-package",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Automated accessibility fixes for HTML files - Alt attributes, Lang attributes, Role attributes. Smart context-aware alt text generation with individual fix options and comprehensive role attribute management.",
   "main": "index.js",
   "bin": {
@@ -16,6 +16,7 @@
     "lang-only": "node cli.js --lang-only",
     "role-only": "node cli.js --role-only",
     "cleanup-only": "node cli.js --cleanup-only",
+    "no-backup": "node cli.js --no-backup",
     "test": "node test-package.js",
     "demo": "node cli.js --dry-run demo",
     "prepublishOnly": "npm run test"

@@ -14,7 +14,7 @@ const args = process.argv.slice(2);
 const options = {
   directory: '.',
   language: 'ja',
-  backupFiles: true,
+  backupFiles: true, // Default to true for safety
   dryRun: false,
   help: false,
   cleanupOnly: false,
@@ -40,6 +40,9 @@ for (let i = 0; i < args.length; i++) {
     case '--language':
     case '-l':
       options.language = args[++i];
+      break;
+    case '--backup':
+      options.backupFiles = true;
       break;
     case '--no-backup':
       options.backupFiles = false;
@@ -80,6 +83,7 @@ Usage: node cli.js [options] [directory]
 Options:
   -d, --directory <path>    Target directory (default: current directory)
   -l, --language <lang>     Language for lang attribute (default: ja)
+  --backup                 Create backup files (default: enabled)
   --no-backup              Don't create backup files
   --dry-run                Preview changes without applying
   --comprehensive, --all   Run all fixes including cleanup (recommended)
@@ -90,7 +94,7 @@ Options:
   -h, --help               Show this help message
 
 Examples:
-  node cli.js                          # Fix current directory (standard fixes)
+  node cli.js                          # Fix current directory (with backups)
   node cli.js --comprehensive          # Run all fixes including cleanup
   node cli.js --alt-only               # Only fix alt attributes
   node cli.js --lang-only              # Only fix lang attributes
@@ -99,6 +103,7 @@ Examples:
   node cli.js ./src                    # Fix src directory
   node cli.js -l en --dry-run ./dist   # Preview fixes for dist directory in English
   node cli.js --no-backup ./public    # Fix without creating backups
+  node cli.js --backup --comprehensive # Explicitly enable backups with all fixes
 
 Features:
   ✅ Alt attributes for images
@@ -108,6 +113,22 @@ Features:
   ✅ Automatic backups
 `));
   process.exit(0);
+}
+
+// Helper function to show completion message with backup info
+function showCompletionMessage(options, mode = 'fixes') {
+  if (options.dryRun) {
+    console.log(chalk.cyan('\n💡 This was a dry run. Use without --dry-run to apply changes.'));
+  } else {
+    console.log(chalk.green(`\n🎉 ${mode} completed successfully!`));
+    if (options.backupFiles) {
+      console.log(chalk.gray('   📁 Backup files created with .backup extension'));
+      console.log(chalk.gray('   💡 Use --no-backup to disable backups in future runs'));
+    } else {
+      console.log(chalk.yellow('   ⚠️  No backup files created (--no-backup was used)'));
+      console.log(chalk.gray('   💡 Use --backup to enable backups for safety'));
+    }
+  }
 }
 
 // Main function
@@ -143,11 +164,7 @@ async function main() {
       
       console.log(chalk.green(`\n✅ Cleaned duplicate roles in ${cleanupFixed} files`));
       
-      if (options.dryRun) {
-        console.log(chalk.cyan('\n💡 This was a dry run. Use without --dry-run to apply changes.'));
-      } else {
-        console.log(chalk.green('\n🎉 Cleanup completed successfully!'));
-      }
+      showCompletionMessage(options, 'Cleanup');
       return;
       
     } else if (options.altOnly) {
@@ -159,11 +176,7 @@ async function main() {
       
       console.log(chalk.green(`\n✅ Fixed alt attributes in ${altFixed} files (${totalAltIssues} issues)`));
       
-      if (options.dryRun) {
-        console.log(chalk.cyan('\n💡 This was a dry run. Use without --dry-run to apply changes.'));
-      } else {
-        console.log(chalk.green('\n🎉 Alt attribute fixes completed successfully!'));
-      }
+      showCompletionMessage(options, 'Alt attribute fixes');
       return;
       
     } else if (options.langOnly) {
@@ -174,11 +187,7 @@ async function main() {
       
       console.log(chalk.green(`\n✅ Fixed lang attributes in ${langFixed} files`));
       
-      if (options.dryRun) {
-        console.log(chalk.cyan('\n💡 This was a dry run. Use without --dry-run to apply changes.'));
-      } else {
-        console.log(chalk.green('\n🎉 Lang attribute fixes completed successfully!'));
-      }
+      showCompletionMessage(options, 'Lang attribute fixes');
       return;
       
     } else if (options.roleOnly) {
@@ -190,11 +199,7 @@ async function main() {
       
       console.log(chalk.green(`\n✅ Fixed role attributes in ${roleFixed} files (${totalRoleIssues} issues)`));
       
-      if (options.dryRun) {
-        console.log(chalk.cyan('\n💡 This was a dry run. Use without --dry-run to apply changes.'));
-      } else {
-        console.log(chalk.green('\n🎉 Role attribute fixes completed successfully!'));
-      }
+      showCompletionMessage(options, 'Role attribute fixes');
       return;
     }
 
@@ -242,14 +247,7 @@ async function main() {
     console.log(chalk.green(`   Files fixed: ${totalFixed}`));
     console.log(chalk.yellow(`   Total issues resolved: ${totalIssues}`));
     
-    if (options.dryRun) {
-      console.log(chalk.cyan('\n💡 This was a dry run. Use without --dry-run to apply changes.'));
-    } else {
-      console.log(chalk.green('\n🎉 All accessibility fixes completed successfully!'));
-      if (options.backupFiles) {
-        console.log(chalk.gray('   Backup files created with .backup extension'));
-      }
-    }
+    showCompletionMessage(options, 'All accessibility fixes');
     
     // Suggest cleanup if not comprehensive mode
     console.log(chalk.blue('\n💡 Pro tip: Use --comprehensive to include duplicate role cleanup!'));

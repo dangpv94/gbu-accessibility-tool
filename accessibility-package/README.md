@@ -59,6 +59,7 @@ gbu-a11y [options] [directory/file]
 Options:
   -d, --directory <path>    Target directory (default: current directory)
   -l, --language <lang>     Language for lang attribute (default: ja)
+  --backup                 Create backup files (default: enabled)
   --no-backup              Don't create backup files
   --dry-run                Preview changes without applying
   --comprehensive, --all   Run all fixes including cleanup (recommended)
@@ -83,7 +84,7 @@ gbu-a11y -l en ./public
 
 # Individual fix types
 gbu-a11y --alt-only          # Only fix alt attributes
-gbu-a11y --lang-only         # Only fix lang attributes  
+gbu-a11y --lang-only         # Only fix lang attributes
 gbu-a11y --role-only         # Only fix role attributes
 gbu-a11y --cleanup-only      # Only cleanup duplicates
 
@@ -91,28 +92,29 @@ gbu-a11y --cleanup-only      # Only cleanup duplicates
 gbu-a11y --alt-only --dry-run ./src    # Preview alt fixes only
 gbu-a11y --role-only -l en ./public    # Fix roles with English lang
 
-# Fix without creating backups
-gbu-a11y --no-backup ./dist
+# Backup options
+gbu-a11y --backup ./dist             # Explicitly enable backups (default)
+gbu-a11y --no-backup ./dist          # Disable backups for faster processing
 ```
 
 ## 🔧 Programmatic Usage
 
 ```javascript
-const AccessibilityFixer = require('gbu-accessibility-package');
+const AccessibilityFixer = require("gbu-accessibility-package");
 
 const fixer = new AccessibilityFixer({
-  language: 'en',
+  language: "en",
   backupFiles: true,
-  dryRun: false
+  dryRun: false,
 });
 
 // Fix all accessibility issues
 async function fixAccessibility() {
   try {
-    const results = await fixer.fixAllAccessibilityIssues('./src');
-    console.log('Fixed files:', results);
+    const results = await fixer.fixAllAccessibilityIssues("./src");
+    console.log("Fixed files:", results);
   } catch (error) {
-    console.error('Error:', error);
+    console.error("Error:", error);
   }
 }
 
@@ -122,14 +124,16 @@ fixAccessibility();
 ## 🎯 Fix Modes
 
 ### Individual Fix Options
+
 You can now fix specific accessibility issues individually:
 
 - `--alt-only` - Only fix alt attributes for images
-- `--lang-only` - Only fix HTML lang attributes  
+- `--lang-only` - Only fix HTML lang attributes
 - `--role-only` - Only fix role attributes
 - `--cleanup-only` - Only cleanup duplicate role attributes
 
 ### Combined Modes
+
 - **Standard mode** (default) - Fixes alt, lang, and role attributes
 - `--comprehensive` - All fixes including duplicate cleanup
 
@@ -153,35 +157,40 @@ gbu-a11y --comprehensive
 ## 🔧 What Gets Fixed
 
 ### 1. Alt Attributes
+
 - **Missing alt attributes** → Adds contextual alt text
 - **Empty alt attributes** → Generates meaningful descriptions
 - **Context-aware generation** → Uses surrounding text, headings, captions
 
 ```html
 <!-- Before -->
-<img src="logo.png">
-<img src="chart.jpg" alt="">
+<img src="logo.png" />
+<img src="chart.jpg" alt="" />
 
 <!-- After -->
-<img src="logo.png" alt="ロゴ">
-<img src="chart.jpg" alt="グラフ">
+<img src="logo.png" alt="ロゴ" />
+<img src="chart.jpg" alt="グラフ" />
 ```
 
 ### 2. HTML Lang Attributes
+
 - **Missing lang attributes** → Adds specified language
 - **Empty lang attributes** → Sets proper language code
 
 ```html
 <!-- Before -->
 <html>
-<html lang="">
-
-<!-- After -->
-<html lang="ja">
-<html lang="ja">
+  <html lang="">
+    <!-- After -->
+    <html lang="ja">
+      <html lang="ja"></html>
+    </html>
+  </html>
+</html>
 ```
 
 ### 3. Role Attributes & Aria Labels
+
 - **Images** → `role="img"` + `aria-label` (matching alt text)
 - **Picture elements** → Moves `role="img"` from `<picture>` to `<img>` inside
 - **Links** → `role="link"`
@@ -191,46 +200,48 @@ gbu-a11y --comprehensive
 
 ```html
 <!-- Before -->
-<img src="icon.png" alt="Icon">
+<img src="icon.png" alt="Icon" />
 <picture role="img">
-  <img src="photo.jpg" alt="Photo">
+  <img src="photo.jpg" alt="Photo" />
 </picture>
 <a href="/home">Home</a>
 <div class="btn-click">Click me</div>
 
 <!-- After -->
-<img src="icon.png" alt="Icon" role="img" aria-label="Icon">
+<img src="icon.png" alt="Icon" role="img" aria-label="Icon" />
 <picture>
-  <img src="photo.jpg" alt="Photo" role="img" aria-label="Photo">
+  <img src="photo.jpg" alt="Photo" role="img" aria-label="Photo" />
 </picture>
 <a href="/home" role="link">Home</a>
 <div class="btn-click" role="button">Click me</div>
 ```
 
 ### 4. Aria Label Enhancement
+
 - **Automatic aria-label** → Adds `aria-label` matching `alt` text for images
 - **Preserves existing** → Won't override existing `aria-label` attributes
 - **Smart detection** → Only adds when `alt` text exists and is not empty
 
 ```html
 <!-- Before -->
-<img src="chart.jpg" alt="Sales Chart">
+<img src="chart.jpg" alt="Sales Chart" />
 
 <!-- After -->
-<img src="chart.jpg" alt="Sales Chart" role="img" aria-label="Sales Chart">
+<img src="chart.jpg" alt="Sales Chart" role="img" aria-label="Sales Chart" />
 ```
 
 ### 5. Duplicate Cleanup
+
 - **Removes duplicate role attributes**
 - **Preserves first occurrence**
 - **Handles mixed quote styles**
 
 ```html
 <!-- Before -->
-<img src="test.jpg" role="img" role="img" alt="Test">
+<img src="test.jpg" role="img" role="img" alt="Test" />
 
 <!-- After -->
-<img src="test.jpg" role="img" alt="Test">
+<img src="test.jpg" role="img" alt="Test" />
 ```
 
 ## 🌟 Smart Alt Text Generation
@@ -238,8 +249,9 @@ gbu-a11y --comprehensive
 The package uses intelligent context analysis to generate meaningful alt text:
 
 ### Context Sources
+
 1. **Title attributes**
-2. **Aria-label attributes**  
+2. **Aria-label attributes**
 3. **Definition terms (dt elements)**
 4. **Parent link text**
 5. **Nearby headings**
@@ -247,6 +259,7 @@ The package uses intelligent context analysis to generate meaningful alt text:
 7. **Surrounding text content**
 
 ### Fallback Patterns
+
 - `logo.png` → "ロゴ" (Logo)
 - `icon.svg` → "アイコン" (Icon)
 - `banner.jpg` → "バナー" (Banner)
@@ -256,6 +269,7 @@ The package uses intelligent context analysis to generate meaningful alt text:
 ## 📊 Output Examples
 
 ### Standard Mode
+
 ```
 🚀 Starting Accessibility Fixer...
 📝 Step 1: Fixing HTML lang attributes...
@@ -264,7 +278,7 @@ The package uses intelligent context analysis to generate meaningful alt text:
 🖼️ Step 2: Fixing alt attributes...
 ✅ Fixed alt attributes in 12 files (34 issues)
 
-🎭 Step 3: Fixing role attributes...  
+🎭 Step 3: Fixing role attributes...
 ✅ Fixed role attributes in 8 files (67 issues)
 
 📊 Summary:
@@ -276,6 +290,7 @@ The package uses intelligent context analysis to generate meaningful alt text:
 ```
 
 ### Comprehensive Mode
+
 ```
 🎯 Running comprehensive accessibility fixes...
 📝 Step 1: HTML lang attributes...
@@ -286,14 +301,30 @@ The package uses intelligent context analysis to generate meaningful alt text:
 🎉 All accessibility fixes completed!
 📊 Final Summary:
    Total files scanned: 25
-   Files fixed: 15  
+   Files fixed: 15
    Total issues resolved: 106
 ```
 
 ## 🔒 Safety Features
 
-- **Automatic backups** with `.backup` extension
-- **Dry run mode** for safe previewing
+### Backup Options
+- **Default behavior**: Creates `.backup` files automatically for safety
+- **Disable backups**: Use `--no-backup` for faster processing
+- **Explicit enable**: Use `--backup` to be explicit about backup creation
+
+```bash
+# Safe mode (default) - creates backups
+gbu-a11y --comprehensive
+
+# Fast mode - no backups
+gbu-a11y --no-backup --comprehensive
+
+# Explicit backup mode
+gbu-a11y --backup --comprehensive
+```
+
+### Other Safety Features
+- **Dry run mode** for safe previewing with `--dry-run`
 - **Non-destructive** - only adds missing attributes
 - **Duplicate prevention** - won't add existing attributes
 - **Error handling** - continues processing on individual file errors
@@ -301,6 +332,7 @@ The package uses intelligent context analysis to generate meaningful alt text:
 ## 🛠️ Configuration
 
 ### Package.json Scripts
+
 ```json
 {
   "scripts": {
@@ -309,19 +341,20 @@ The package uses intelligent context analysis to generate meaningful alt text:
     "a11y:comprehensive": "gbu-a11y --comprehensive",
     "a11y:cleanup": "gbu-a11y --cleanup-only",
     "a11y:alt": "gbu-a11y --alt-only",
-    "a11y:lang": "gbu-a11y --lang-only", 
+    "a11y:lang": "gbu-a11y --lang-only",
     "a11y:role": "gbu-a11y --role-only"
   }
 }
 ```
 
 ### CI/CD Integration
+
 ```yaml
 # GitHub Actions example
 - name: Check Accessibility
   run: npx gbu-accessibility-package --dry-run
 
-- name: Fix Accessibility Issues  
+- name: Fix Accessibility Issues
   run: npx gbu-accessibility-package --comprehensive
 ```
 
