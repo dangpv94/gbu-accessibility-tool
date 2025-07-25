@@ -563,13 +563,25 @@ class AccessibilityFixer {
       }
     ];
     
-    // Check for images that need role="img"
+    // Check for images that need role="img" and aria-label
     const images = content.match(/<img[^>]*>/gi) || [];
     images.forEach((img, index) => {
       if (!img.includes('role=')) {
         issues.push({
           type: '🖼️ Missing role',
           description: `Image ${index + 1} should have role="img"`,
+          element: img.substring(0, 100) + '...'
+        });
+      }
+      
+      // Check for missing aria-label when alt exists
+      const hasAriaLabel = /aria-label\s*=/i.test(img);
+      const altMatch = img.match(/alt\s*=\s*["']([^"']*)["']/i);
+      
+      if (!hasAriaLabel && altMatch && altMatch[1].trim()) {
+        issues.push({
+          type: '🏷️ Missing aria-label',
+          description: `Image ${index + 1} should have aria-label matching alt text`,
           element: img.substring(0, 100) + '...'
         });
       }
@@ -676,7 +688,17 @@ class AccessibilityFixer {
           const pictureWithoutRole = pictureBlock.replace(/\s*role\s*=\s*["']img["']/i, '');
           
           // Add role="img" to img element
-          const imgWithRole = imgTag.replace(/(<img[^>]*?)(\s*>)/i, '$1 role="img"$2');
+          let imgWithRole = imgTag.replace(/(<img[^>]*?)(\s*>)/i, '$1 role="img"$2');
+          
+          // Also add aria-label if img has alt but no aria-label
+          const imgHasAriaLabel = /aria-label\s*=/i.test(imgWithRole);
+          const altMatch = imgWithRole.match(/alt\s*=\s*["']([^"']*)["']/i);
+          
+          if (!imgHasAriaLabel && altMatch && altMatch[1].trim()) {
+            const altText = altMatch[1].trim();
+            imgWithRole = imgWithRole.replace(/(<img[^>]*?)(\s*>)/i, `$1 aria-label="${altText}"$2`);
+            console.log(chalk.yellow(`  🏷️ Added aria-label="${altText}" to moved img element`));
+          }
           
           // Replace the img in the modified picture block
           const updatedPictureBlock = pictureWithoutRole.replace(imgTag, imgWithRole);
@@ -698,16 +720,33 @@ class AccessibilityFixer {
     // Fix picture elements with img children - move role from picture to img
     fixed = this.fixPictureImgRoles(fixed);
     
-    // Fix all images - add role="img" (only if no role exists)
+    // Fix all images - add role="img" and aria-label
     fixed = fixed.replace(
       /<img([^>]*>)/gi,
-      (match, fullTag) => {
+      (match) => {
+        let updatedImg = match;
+        let hasChanges = false;
+        
         // Check if role attribute already exists
-        if (/role\s*=/i.test(match)) {
-          return match; // Return unchanged if role already exists
+        if (!/role\s*=/i.test(match)) {
+          updatedImg = updatedImg.replace(/(<img[^>]*?)(\s*>)/i, '$1 role="img"$2');
+          console.log(chalk.yellow(`  🖼️ Added role="img" to image element`));
+          hasChanges = true;
         }
-        console.log(chalk.yellow(`  🖼️ Added role="img" to image element`));
-        return match.replace(/(<img[^>]*?)(\s*>)/i, '$1 role="img"$2');
+        
+        // Check if aria-label already exists
+        if (!/aria-label\s*=/i.test(match)) {
+          // Extract alt text to use for aria-label
+          const altMatch = match.match(/alt\s*=\s*["']([^"']*)["']/i);
+          if (altMatch && altMatch[1].trim()) {
+            const altText = altMatch[1].trim();
+            updatedImg = updatedImg.replace(/(<img[^>]*?)(\s*>)/i, `$1 aria-label="${altText}"$2`);
+            console.log(chalk.yellow(`  🏷️ Added aria-label="${altText}" to image element`));
+            hasChanges = true;
+          }
+        }
+        
+        return updatedImg;
       }
     );
     

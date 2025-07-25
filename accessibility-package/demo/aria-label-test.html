@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aria Label Test</title>
+</head>
+<body>
+    <h1>Aria Label Test Cases</h1>
+    
+    <!-- Test case 1: Image with alt but no aria-label -->
+    <img src="test1.jpg" alt="Test image 1" role="img" aria-label="Test image 1">
+    
+    <!-- Test case 2: Image with alt and existing aria-label (should not change) -->
+    <img src="test2.jpg" alt="Test image 2" aria-label="Custom label" role="img">
+    
+    <!-- Test case 3: Image with empty alt (should not add aria-label) -->
+    <img src="test3.jpg" alt="" role="img">
+    
+    <!-- Test case 4: Image without alt (should generate alt and aria-label) -->
+    <img src="logo.png" role="img">
+    
+    <!-- Test case 5: Picture with role and img with alt -->
+    <picture>
+        <source srcset="responsive.webp" type="image/webp">
+        <img src="responsive.jpg" alt="Responsive image" role="img" aria-label="Responsive image">
+    </picture>
+    
+    <!-- Test case 6: Image with role but no aria-label -->
+    <img src="test6.jpg" alt="Test image 6" role="img" aria-label="Test image 6">
+</body>
+</html>

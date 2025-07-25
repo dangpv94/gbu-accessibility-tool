@@ -9,6 +9,7 @@
 ## ✨ Features
 
 - 🖼️ **Smart Alt Text Generation** - Context-aware alt attributes for images
+- 🏷️ **Aria Label Support** - Automatic aria-label matching alt text
 - 🌐 **HTML Lang Attributes** - Automatic language attribute fixes
 - 🎭 **Role Attributes** - WCAG-compliant role attribute management
 - 🧹 **Duplicate Cleanup** - Remove duplicate role attributes
@@ -180,8 +181,8 @@ gbu-a11y --comprehensive
 <html lang="ja">
 ```
 
-### 3. Role Attributes
-- **Images** → `role="img"`
+### 3. Role Attributes & Aria Labels
+- **Images** → `role="img"` + `aria-label` (matching alt text)
 - **Picture elements** → Moves `role="img"` from `<picture>` to `<img>` inside
 - **Links** → `role="link"`
 - **Clickable elements** → `role="button"`
@@ -198,15 +199,28 @@ gbu-a11y --comprehensive
 <div class="btn-click">Click me</div>
 
 <!-- After -->
-<img src="icon.png" alt="Icon" role="img">
+<img src="icon.png" alt="Icon" role="img" aria-label="Icon">
 <picture>
-  <img src="photo.jpg" alt="Photo" role="img">
+  <img src="photo.jpg" alt="Photo" role="img" aria-label="Photo">
 </picture>
 <a href="/home" role="link">Home</a>
 <div class="btn-click" role="button">Click me</div>
 ```
 
-### 4. Duplicate Cleanup
+### 4. Aria Label Enhancement
+- **Automatic aria-label** → Adds `aria-label` matching `alt` text for images
+- **Preserves existing** → Won't override existing `aria-label` attributes
+- **Smart detection** → Only adds when `alt` text exists and is not empty
+
+```html
+<!-- Before -->
+<img src="chart.jpg" alt="Sales Chart">
+
+<!-- After -->
+<img src="chart.jpg" alt="Sales Chart" role="img" aria-label="Sales Chart">
+```
+
+### 5. Duplicate Cleanup
 - **Removes duplicate role attributes**
 - **Preserves first occurrence**
 - **Handles mixed quote styles**
