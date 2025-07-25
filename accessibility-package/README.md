@@ -388,6 +388,92 @@ gbu-a11y --backup --comprehensive
 - **Duplicate prevention** - won't add existing attributes
 - **Error handling** - continues processing on individual file errors
 
+## 🔧 Package Management
+
+### Uninstall and Reinstall
+
+If you encounter issues or want to update to the latest version:
+
+```bash
+# Uninstall global package
+npm uninstall -g gbu-accessibility-package
+
+# Clear npm cache
+npm cache clean --force
+
+# Reinstall latest version
+npm install -g gbu-accessibility-package@latest
+
+# Verify installation
+gbu-a11y --version
+gbu-a11y --help
+```
+
+### Local Project Management
+
+```bash
+# Remove from local project
+npm uninstall gbu-accessibility-package
+
+# Clear package-lock and node_modules
+rm -rf node_modules package-lock.json
+
+# Reinstall dependencies
+npm install
+
+# Add latest version
+npm install gbu-accessibility-package@latest
+```
+
+### Clear Backup Files
+
+```bash
+# Remove all backup files in current directory
+find . -name "*.backup" -type f -delete
+
+# Remove backup files in specific directory
+find ./src -name "*.backup" -type f -delete
+
+# Using npm script (if configured)
+npm run cleanup-backups
+```
+
+### Troubleshooting Installation
+
+```bash
+# Check npm configuration
+npm config list
+
+# Reset npm registry (if needed)
+npm config set registry https://registry.npmjs.org/
+
+# Check global packages
+npm list -g --depth=0
+
+# Fix permissions (macOS/Linux)
+sudo chown -R $(whoami) ~/.npm
+sudo chown -R $(whoami) /usr/local/lib/node_modules
+
+# Alternative: Use npx without global install
+npx gbu-accessibility-package --help
+```
+
+### Version Management
+
+```bash
+# Check current version
+gbu-a11y --version
+
+# Check available versions
+npm view gbu-accessibility-package versions --json
+
+# Install specific version
+npm install -g gbu-accessibility-package@2.0.0
+
+# Update to latest
+npm update -g gbu-accessibility-package
+```
+
 ## 🛠️ Configuration
 
 ### Package.json Scripts
@@ -451,6 +537,108 @@ This package addresses common issues found by axe DevTools:
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔧 Troubleshooting
+
+### Common Issues and Solutions
+
+#### Package Not Found or Command Not Working
+```bash
+# Check if package is installed globally
+npm list -g gbu-accessibility-package
+
+# If not found, install globally
+npm install -g gbu-accessibility-package
+
+# Check PATH includes npm global bin
+echo $PATH | grep npm
+
+# Add npm global bin to PATH (if needed)
+export PATH=$PATH:$(npm config get prefix)/bin
+```
+
+#### Permission Errors
+```bash
+# macOS/Linux: Fix npm permissions
+sudo chown -R $(whoami) ~/.npm
+sudo chown -R $(whoami) $(npm config get prefix)
+
+# Alternative: Use npx
+npx gbu-accessibility-package --help
+
+# Windows: Run as Administrator or use npx
+```
+
+#### Package Not Working After Update
+```bash
+# Complete reinstall
+npm uninstall -g gbu-accessibility-package
+npm cache clean --force
+npm install -g gbu-accessibility-package@latest
+
+# Verify installation
+gbu-a11y --version
+which gbu-a11y
+```
+
+#### Files Not Being Processed
+```bash
+# Check file extensions (only .html files supported)
+ls -la *.html
+
+# Check file permissions
+ls -la your-file.html
+
+# Run with verbose output
+gbu-a11y --dry-run your-file.html
+```
+
+#### Backup Files Accumulating
+```bash
+# Clean all backup files
+find . -name "*.backup" -type f -delete
+
+# Prevent backup creation
+gbu-a11y --no-backup
+
+# Configure cleanup script
+echo 'alias cleanup-backups="find . -name \"*.backup\" -type f -delete"' >> ~/.bashrc
+```
+
+#### Performance Issues
+```bash
+# Use --no-backup for faster processing
+gbu-a11y --no-backup
+
+# Process specific directories instead of entire project
+gbu-a11y ./src
+
+# Use individual modes for targeted fixes
+gbu-a11y --alt-only ./images
+```
+
+#### Node.js Version Issues
+```bash
+# Check Node.js version (requires >=12.0.0)
+node --version
+
+# Update Node.js if needed
+# Visit: https://nodejs.org/
+
+# Use nvm to manage Node.js versions
+nvm install 18
+nvm use 18
+```
+
+### Getting Help
+
+If you're still experiencing issues:
+
+1. **Check the version**: `gbu-a11y --version`
+2. **Try dry run first**: `gbu-a11y --dry-run`
+3. **Check file permissions**: `ls -la your-files.html`
+4. **Clear cache and reinstall**: See package management section above
+5. **Use npx as alternative**: `npx gbu-accessibility-package --help`
 
 ## 🆘 Support
 

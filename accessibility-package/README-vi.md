@@ -413,6 +413,92 @@ gbu-a11y --backup --comprehensive
 - **Ngăn chặn trùng lặp** - không thêm attributes đã có
 - **Xử lý lỗi** - tiếp tục xử lý khi có lỗi file riêng lẻ
 
+## 🔧 Quản lý Package
+
+### Gỡ cài đặt và Cài đặt lại
+
+Nếu bạn gặp vấn đề hoặc muốn cập nhật lên phiên bản mới nhất:
+
+```bash
+# Gỡ cài đặt package global
+npm uninstall -g gbu-accessibility-package
+
+# Xóa npm cache
+npm cache clean --force
+
+# Cài đặt lại phiên bản mới nhất
+npm install -g gbu-accessibility-package@latest
+
+# Kiểm tra cài đặt
+gbu-a11y --version
+gbu-a11y --help
+```
+
+### Quản lý dự án cục bộ
+
+```bash
+# Xóa khỏi dự án cục bộ
+npm uninstall gbu-accessibility-package
+
+# Xóa package-lock và node_modules
+rm -rf node_modules package-lock.json
+
+# Cài đặt lại dependencies
+npm install
+
+# Thêm phiên bản mới nhất
+npm install gbu-accessibility-package@latest
+```
+
+### Xóa file Backup
+
+```bash
+# Xóa tất cả file backup trong thư mục hiện tại
+find . -name "*.backup" -type f -delete
+
+# Xóa file backup trong thư mục cụ thể
+find ./src -name "*.backup" -type f -delete
+
+# Sử dụng npm script (nếu đã cấu hình)
+npm run cleanup-backups
+```
+
+### Khắc phục sự cố cài đặt
+
+```bash
+# Kiểm tra cấu hình npm
+npm config list
+
+# Reset npm registry (nếu cần)
+npm config set registry https://registry.npmjs.org/
+
+# Kiểm tra global packages
+npm list -g --depth=0
+
+# Sửa quyền (macOS/Linux)
+sudo chown -R $(whoami) ~/.npm
+sudo chown -R $(whoami) /usr/local/lib/node_modules
+
+# Thay thế: Sử dụng npx mà không cài global
+npx gbu-accessibility-package --help
+```
+
+### Quản lý phiên bản
+
+```bash
+# Kiểm tra phiên bản hiện tại
+gbu-a11y --version
+
+# Kiểm tra các phiên bản có sẵn
+npm view gbu-accessibility-package versions --json
+
+# Cài đặt phiên bản cụ thể
+npm install -g gbu-accessibility-package@2.0.0
+
+# Cập nhật lên mới nhất
+npm update -g gbu-accessibility-package
+```
+
 ## 🛠️ Cấu hình
 
 ### Package.json Scripts
@@ -454,6 +540,108 @@ gbu-a11y --backup --comprehensive
 ## 📝 Giấy phép
 
 Dự án này được cấp phép theo Giấy phép MIT - xem file [LICENSE](LICENSE) để biết chi tiết.
+
+## 🔧 Khắc phục sự cố
+
+### Các vấn đề thường gặp và giải pháp
+
+#### Package không tìm thấy hoặc lệnh không hoạt động
+```bash
+# Kiểm tra package đã cài global chưa
+npm list -g gbu-accessibility-package
+
+# Nếu không tìm thấy, cài đặt global
+npm install -g gbu-accessibility-package
+
+# Kiểm tra PATH có chứa npm global bin không
+echo $PATH | grep npm
+
+# Thêm npm global bin vào PATH (nếu cần)
+export PATH=$PATH:$(npm config get prefix)/bin
+```
+
+#### Lỗi quyền truy cập
+```bash
+# macOS/Linux: Sửa quyền npm
+sudo chown -R $(whoami) ~/.npm
+sudo chown -R $(whoami) $(npm config get prefix)
+
+# Thay thế: Sử dụng npx
+npx gbu-accessibility-package --help
+
+# Windows: Chạy với quyền Administrator hoặc dùng npx
+```
+
+#### Package không hoạt động sau khi cập nhật
+```bash
+# Cài đặt lại hoàn toàn
+npm uninstall -g gbu-accessibility-package
+npm cache clean --force
+npm install -g gbu-accessibility-package@latest
+
+# Kiểm tra cài đặt
+gbu-a11y --version
+which gbu-a11y
+```
+
+#### File không được xử lý
+```bash
+# Kiểm tra phần mở rộng file (chỉ hỗ trợ .html)
+ls -la *.html
+
+# Kiểm tra quyền file
+ls -la your-file.html
+
+# Chạy với output chi tiết
+gbu-a11y --dry-run your-file.html
+```
+
+#### File backup tích tụ quá nhiều
+```bash
+# Xóa tất cả file backup
+find . -name "*.backup" -type f -delete
+
+# Ngăn tạo backup
+gbu-a11y --no-backup
+
+# Cấu hình script cleanup
+echo 'alias cleanup-backups="find . -name \"*.backup\" -type f -delete"' >> ~/.bashrc
+```
+
+#### Vấn đề hiệu suất
+```bash
+# Sử dụng --no-backup để xử lý nhanh hơn
+gbu-a11y --no-backup
+
+# Xử lý thư mục cụ thể thay vì toàn bộ dự án
+gbu-a11y ./src
+
+# Sử dụng individual modes cho sửa chữa có mục tiêu
+gbu-a11y --alt-only ./images
+```
+
+#### Vấn đề phiên bản Node.js
+```bash
+# Kiểm tra phiên bản Node.js (yêu cầu >=12.0.0)
+node --version
+
+# Cập nhật Node.js nếu cần
+# Truy cập: https://nodejs.org/
+
+# Sử dụng nvm để quản lý phiên bản Node.js
+nvm install 18
+nvm use 18
+```
+
+### Nhận trợ giúp
+
+Nếu bạn vẫn gặp vấn đề:
+
+1. **Kiểm tra phiên bản**: `gbu-a11y --version`
+2. **Thử dry run trước**: `gbu-a11y --dry-run`
+3. **Kiểm tra quyền file**: `ls -la your-files.html`
+4. **Xóa cache và cài lại**: Xem phần quản lý package ở trên
+5. **Sử dụng npx thay thế**: `npx gbu-accessibility-package --help`
 
 ## 🆘 Hỗ trợ
 
