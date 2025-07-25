@@ -18,7 +18,8 @@ const options = {
   dryRun: false,
   help: false,
   cleanupOnly: false,
-  comprehensive: false,
+  comprehensive: false, // Keep for backward compatibility
+  basicMode: false, // New option for basic fixes only
   altOnly: false,
   langOnly: false,
   roleOnly: false
@@ -55,7 +56,10 @@ for (let i = 0; i < args.length; i++) {
       break;
     case '--comprehensive':
     case '--all':
-      options.comprehensive = true;
+      options.comprehensive = true; // Keep for backward compatibility
+      break;
+    case '--basic':
+      options.basicMode = true;
       break;
     case '--alt-only':
       options.altOnly = true;
@@ -86,7 +90,8 @@ Options:
   --backup                 Create backup files (default: enabled)
   --no-backup              Don't create backup files
   --dry-run                Preview changes without applying
-  --comprehensive, --all   Run all fixes including cleanup (recommended)
+  --basic                  Run basic fixes only (without cleanup)
+  --comprehensive, --all   Run comprehensive fixes (same as default)
   --cleanup-only           Only cleanup duplicate role attributes
   --alt-only               Only fix alt attributes for images
   --lang-only              Only fix HTML lang attributes
@@ -94,16 +99,17 @@ Options:
   -h, --help               Show this help message
 
 Examples:
-  node cli.js                          # Fix current directory (with backups)
-  node cli.js --comprehensive          # Run all fixes including cleanup
+  node cli.js                          # Comprehensive fixes (default mode)
+  node cli.js --basic                  # Basic fixes without cleanup
+  node cli.js --comprehensive          # Comprehensive fixes (same as default)
   node cli.js --alt-only               # Only fix alt attributes
   node cli.js --lang-only              # Only fix lang attributes
   node cli.js --role-only              # Only fix role attributes
   node cli.js --cleanup-only           # Only cleanup duplicate roles
-  node cli.js ./src                    # Fix src directory
-  node cli.js -l en --dry-run ./dist   # Preview fixes for dist directory in English
-  node cli.js --no-backup ./public    # Fix without creating backups
-  node cli.js --backup --comprehensive # Explicitly enable backups with all fixes
+  node cli.js ./src                    # Fix src directory (comprehensive)
+  node cli.js -l en --dry-run ./dist   # Preview comprehensive fixes in English
+  node cli.js --no-backup ./public    # Comprehensive fixes without backups
+  node cli.js --basic --no-backup     # Basic fixes without backups
 
 Features:
   ✅ Alt attributes for images
@@ -113,6 +119,58 @@ Features:
   ✅ Automatic backups
 `));
   process.exit(0);
+}
+
+// Helper function to run basic fixes (standard mode without cleanup)
+async function runBasicFixes(fixer, options) {
+  // Fix HTML lang attributes
+  console.log(chalk.yellow('📝 Step 1: Fixing HTML lang attributes...'));
+  const langResults = await fixer.fixHtmlLang(options.directory);
+  const langFixed = langResults.filter(r => r.status === 'fixed').length;
+  console.log(chalk.green(`✅ Fixed lang attributes in ${langFixed} files`));
+  console.log('');
+
+  // Fix alt attributes
+  console.log(chalk.yellow('🖼️  Step 2: Fixing alt attributes...'));
+  const altResults = await fixer.fixEmptyAltAttributes(options.directory);
+  const altFixed = altResults.filter(r => r.status === 'fixed').length;
+  const totalAltIssues = altResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+  console.log(chalk.green(`✅ Fixed alt attributes in ${altFixed} files (${totalAltIssues} issues)`));
+  console.log('');
+
+  // Fix role attributes
+  console.log(chalk.yellow('🎭 Step 3: Fixing role attributes...'));
+  const roleResults = await fixer.fixRoleAttributes(options.directory);
+  const roleFixed = roleResults.filter(r => r.status === 'fixed').length;
+  const totalRoleIssues = roleResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+  console.log(chalk.green(`✅ Fixed role attributes in ${roleFixed} files (${totalRoleIssues} issues)`));
+  console.log('');
+
+  // Summary
+  const totalFiles = new Set([
+    ...langResults.map(r => r.file),
+    ...altResults.map(r => r.file),
+    ...roleResults.map(r => r.file)
+  ]).size;
+
+  const totalFixed = new Set([
+    ...langResults.filter(r => r.status === 'fixed').map(r => r.file),
+    ...altResults.filter(r => r.status === 'fixed').map(r => r.file),
+    ...roleResults.filter(r => r.status === 'fixed').map(r => r.file)
+  ]).size;
+
+  const totalIssues = totalAltIssues + totalRoleIssues + langFixed;
+
+  console.log(chalk.blue('📊 Summary:'));
+  console.log(chalk.white(`   Total files scanned: ${totalFiles}`));
+  console.log(chalk.green(`   Files fixed: ${totalFixed}`));
+  console.log(chalk.yellow(`   Total issues resolved: ${totalIssues}`));
+  
+  showCompletionMessage(options, 'Basic accessibility fixes');
+  
+  // Suggest comprehensive mode
+  console.log(chalk.blue('\n💡 Pro tip: Default mode now includes comprehensive fixes with cleanup!'));
+  console.log(chalk.gray('   Use --basic to run this mode again, or remove --basic for comprehensive fixes.'));
 }
 
 // Helper function to show completion message with backup info
@@ -147,13 +205,35 @@ async function main() {
   });
 
   try {
-    // Handle different modes
-    if (options.comprehensive) {
-      // Run comprehensive fix (all fixes including cleanup)
-      console.log(chalk.blue('🎯 Running comprehensive accessibility fixes...'));
+    // Handle different modes - Comprehensive is now the default
+    if (options.cleanupOnly || options.altOnly || options.langOnly || options.roleOnly) {
+      // Individual modes - handle each separately
+    } else if (options.basicMode) {
+      // Basic mode: Run standard fixes (without cleanup)
+      console.log(chalk.blue('📝 Running basic accessibility fixes...'));
+      
+      // Run standard fixes without cleanup
+      await runBasicFixes(fixer, options);
+      return;
+    } else {
+      // Default mode: Run comprehensive fix (all fixes including cleanup)
+      console.log(chalk.blue('🎯 Running comprehensive accessibility fixes (default mode)...'));
       const results = await fixer.fixAllAccessibilityIssues(options.directory);
       
       // Results already logged in the method
+      return;
+    }
+    
+    // Individual modes
+    if (options.cleanupOnly) {
+      // Only cleanup duplicate roles
+      console.log(chalk.blue('🧹 Running cleanup for duplicate role attributes...'));
+      const cleanupResults = await fixer.cleanupDuplicateRoles(options.directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      
+      console.log(chalk.green(`\n✅ Cleaned duplicate roles in ${cleanupFixed} files`));
+      
+      showCompletionMessage(options, 'Cleanup');
       return;
       
     } else if (options.cleanupOnly) {
@@ -202,55 +282,6 @@ async function main() {
       showCompletionMessage(options, 'Role attribute fixes');
       return;
     }
-
-    // Standard mode - run individual fixes
-    // Fix HTML lang attributes
-    console.log(chalk.yellow('📝 Step 1: Fixing HTML lang attributes...'));
-    const langResults = await fixer.fixHtmlLang(options.directory);
-    const langFixed = langResults.filter(r => r.status === 'fixed').length;
-    console.log(chalk.green(`✅ Fixed lang attributes in ${langFixed} files`));
-    console.log('');
-
-    // Fix alt attributes
-    console.log(chalk.yellow('🖼️  Step 2: Fixing alt attributes...'));
-    const altResults = await fixer.fixEmptyAltAttributes(options.directory);
-    const altFixed = altResults.filter(r => r.status === 'fixed').length;
-    const totalAltIssues = altResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-    console.log(chalk.green(`✅ Fixed alt attributes in ${altFixed} files (${totalAltIssues} issues)`));
-    console.log('');
-
-    // Fix role attributes
-    console.log(chalk.yellow('🎭 Step 3: Fixing role attributes...'));
-    const roleResults = await fixer.fixRoleAttributes(options.directory);
-    const roleFixed = roleResults.filter(r => r.status === 'fixed').length;
-    const totalRoleIssues = roleResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-    console.log(chalk.green(`✅ Fixed role attributes in ${roleFixed} files (${totalRoleIssues} issues)`));
-    console.log('');
-
-    // Summary
-    const totalFiles = new Set([
-      ...langResults.map(r => r.file),
-      ...altResults.map(r => r.file),
-      ...roleResults.map(r => r.file)
-    ]).size;
-
-    const totalFixed = new Set([
-      ...langResults.filter(r => r.status === 'fixed').map(r => r.file),
-      ...altResults.filter(r => r.status === 'fixed').map(r => r.file),
-      ...roleResults.filter(r => r.status === 'fixed').map(r => r.file)
-    ]).size;
-
-    const totalIssues = totalAltIssues + totalRoleIssues + langFixed;
-
-    console.log(chalk.blue('📊 Summary:'));
-    console.log(chalk.white(`   Total files scanned: ${totalFiles}`));
-    console.log(chalk.green(`   Files fixed: ${totalFixed}`));
-    console.log(chalk.yellow(`   Total issues resolved: ${totalIssues}`));
-    
-    showCompletionMessage(options, 'All accessibility fixes');
-    
-    // Suggest cleanup if not comprehensive mode
-    console.log(chalk.blue('\n💡 Pro tip: Use --comprehensive to include duplicate role cleanup!'));
 
   } catch (error) {
     console.error(chalk.red('❌ Error occurred:'), error.message);

@@ -33,7 +33,7 @@ npm install gbu-accessibility-package
 ### Basic Usage
 
 ```bash
-# Fix current directory
+# Comprehensive fixes (default mode)
 gbu-a11y
 
 # Preview changes (dry run)
@@ -42,8 +42,8 @@ gbu-a11y --dry-run
 # Fix specific directory
 gbu-a11y ./src
 
-# Comprehensive fixes (recommended)
-gbu-a11y --comprehensive
+# Basic fixes only (without cleanup)
+gbu-a11y --basic
 
 # Fix specific file
 gbu-a11y index.html
@@ -62,7 +62,8 @@ Options:
   --backup                 Create backup files (default: enabled)
   --no-backup              Don't create backup files
   --dry-run                Preview changes without applying
-  --comprehensive, --all   Run all fixes including cleanup (recommended)
+  --basic                  Run basic fixes only (without cleanup)
+  --comprehensive, --all   Run comprehensive fixes (same as default)
   --cleanup-only           Only cleanup duplicate role attributes
   --alt-only               Only fix alt attributes for images
   --lang-only              Only fix HTML lang attributes
@@ -76,8 +77,11 @@ Options:
 # Basic fixes for current directory (all standard fixes)
 gbu-a11y
 
-# Preview all changes
-gbu-a11y --dry-run --comprehensive
+# Preview all changes (comprehensive by default)
+gbu-a11y --dry-run
+
+# Basic fixes only (without cleanup)
+gbu-a11y --basic
 
 # Fix with English language
 gbu-a11y -l en ./public
@@ -90,7 +94,7 @@ gbu-a11y --cleanup-only      # Only cleanup duplicates
 
 # Combine with other options
 gbu-a11y --alt-only --dry-run ./src    # Preview alt fixes only
-gbu-a11y --role-only -l en ./public    # Fix roles with English lang
+gbu-a11y --basic -l en ./public        # Basic fixes with English lang
 
 # Backup options
 gbu-a11y --backup ./dist             # Explicitly enable backups (default)
