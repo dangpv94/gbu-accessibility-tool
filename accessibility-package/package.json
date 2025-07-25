@@ -17,6 +17,7 @@
     "role-only": "node cli.js --role-only",
     "cleanup-only": "node cli.js --cleanup-only",
     "no-backup": "node cli.js --no-backup",
+    "cleanup-backups": "find . -name '*.backup' -type f -delete",
     "test": "node test-package.js",
     "demo": "node cli.js --dry-run demo",
     "prepublishOnly": "npm run test"
