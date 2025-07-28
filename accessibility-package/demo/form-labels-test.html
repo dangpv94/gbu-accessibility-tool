@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Labels Test - Accessibility Issues</title>
+</head>
+<body>
+    <h1>Form Labels Test Cases</h1>
+    
+    <!-- Test Case 1: Input without any label -->
+    <div>
+        <input type="text" name="username">
+    </div>
+    
+    <!-- Test Case 2: Input with empty label -->
+    <div>
+        <label for="email"></label>
+        <input type="email" id="email" name="email">
+    </div>
+    
+    <!-- Test Case 3: Input without aria-label -->
+    <div>
+        <input type="password" name="password" placeholder="Enter password">
+    </div>
+    
+    <!-- Test Case 4: Input with invalid aria-labelledby -->
+    <div>
+        <input type="tel" name="phone" aria-labelledby="nonexistent-id">
+    </div>
+    
+    <!-- Test Case 5: Input without title attribute -->
+    <div>
+        <input type="url" name="website">
+    </div>
+    
+    <!-- Test Case 6: Textarea without proper labeling -->
+    <div>
+        <textarea name="comments"></textarea>
+    </div>
+    
+    <!-- Test Case 7: Select without proper labeling -->
+    <div>
+        <select name="country">
+            <option value="">Choose country</option>
+            <option value="jp">Japan</option>
+            <option value="us">USA</option>
+        </select>
+    </div>
+    
+    <!-- Test Case 8: Input with implicit label but empty text -->
+    <div>
+        <label><input type="checkbox" name="agree"></label>
+    </div>
+    
+    <!-- Test Case 9: Input with aria-labelledby pointing to empty element -->
+    <div>
+        <span id="empty-label"></span>
+        <input type="number" name="age" aria-labelledby="empty-label">
+    </div>
+    
+    <!-- Test Case 10: Input without role override -->
+    <div>
+        <input type="range" name="volume" min="0" max="100">
+    </div>
+    
+    <!-- Test Case 11: Multiple inputs without proper structure -->
+    <form>
+        <input type="text" name="firstname">
+        <input type="text" name="lastname">
+        <input type="email" name="user_email">
+        <textarea name="message"></textarea>
+        <select name="priority">
+            <option value="low">Low</option>
+            <option value="high">High</option>
+        </select>
+        <input type="submit" value="Submit">
+    </form>
+    
+    <!-- Test Case 12: Inputs with only placeholder (not sufficient) -->
+    <div>
+        <input type="search" name="query" placeholder="Search...">
+        <input type="date" name="birthdate" placeholder="Select date">
+        <input type="time" name="appointment" placeholder="Select time">
+    </div>
+</body>
+</html>

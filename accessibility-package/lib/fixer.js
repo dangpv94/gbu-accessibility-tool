@@ -3106,6 +3106,371 @@ class AccessibilityFixer {
     return results;
   }
 
+  async fixFormLabels(directory = '.') {
+    console.log(chalk.blue('📋 Fixing form labels...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeFormLabels(content);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            totalIssuesFound++;
+          });
+        }
+        
+        const fixed = this.fixFormLabelsInContent(content);
+        
+        if (fixed !== content) {
+          if (this.config.backupFiles) {
+            await fs.writeFile(`${file}.backup`, content);
+          }
+          
+          if (!this.config.dryRun) {
+            await fs.writeFile(file, fixed);
+          }
+          
+          console.log(chalk.green(`✅ Fixed form labels in: ${file}`));
+          results.push({ file, status: 'fixed', issues: issues.length });
+        } else {
+          results.push({ file, status: 'no-change', issues: issues.length });
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} form label issues across ${results.length} files`));
+    return results;
+  }
+
+  analyzeFormLabels(content) {
+    const issues = [];
+    
+    // Find all form input elements that need labels
+    const inputElements = [
+      'input[type="text"]', 'input[type="email"]', 'input[type="password"]',
+      'input[type="tel"]', 'input[type="url"]', 'input[type="search"]',
+      'input[type="number"]', 'input[type="date"]', 'input[type="time"]',
+      'input[type="datetime-local"]', 'input[type="month"]', 'input[type="week"]',
+      'input[type="color"]', 'input[type="range"]', 'input[type="file"]',
+      'textarea', 'select'
+    ];
+    
+    // Convert to regex patterns
+    const inputPatterns = [
+      /<input[^>]*type\s*=\s*["'](?:text|email|password|tel|url|search|number|date|time|datetime-local|month|week|color|range|file)["'][^>]*>/gi,
+      /<textarea[^>]*>/gi,
+      /<select[^>]*>/gi
+    ];
+    
+    inputPatterns.forEach((pattern, patternIndex) => {
+      const matches = content.match(pattern) || [];
+      
+      matches.forEach((element, index) => {
+        const elementType = patternIndex === 0 ? 'input' : 
+                           patternIndex === 1 ? 'textarea' : 'select';
+        
+        const issues_found = this.checkFormElementLabeling(element, content, elementType, index + 1);
+        issues.push(...issues_found);
+      });
+    });
+    
+    return issues;
+  }
+
+  checkFormElementLabeling(element, content, elementType, index) {
+    const issues = [];
+    
+    // Extract element attributes
+    const id = this.extractAttributeValue(element, 'id');
+    const name = this.extractAttributeValue(element, 'name');
+    const ariaLabel = this.extractAttributeValue(element, 'aria-label');
+    const ariaLabelledby = this.extractAttributeValue(element, 'aria-labelledby');
+    const title = this.extractAttributeValue(element, 'title');
+    const placeholder = this.extractAttributeValue(element, 'placeholder');
+    
+    let hasValidLabel = false;
+    let labelMethods = [];
+    
+    // Check for explicit label (label[for="id"])
+    if (id) {
+      const explicitLabelRegex = new RegExp(`<label[^>]*for\\s*=\\s*["']${id}["'][^>]*>([^<]+)</label>`, 'i');
+      const explicitLabel = content.match(explicitLabelRegex);
+      if (explicitLabel && explicitLabel[1].trim()) {
+        hasValidLabel = true;
+        labelMethods.push('explicit label');
+      } else {
+        issues.push({
+          type: '📋 Missing explicit label',
+          description: `${elementType} ${index} with id="${id}" does not have an explicit <label for="${id}">`,
+          element: element.substring(0, 100) + '...'
+        });
+      }
+    }
+    
+    // Check for implicit label (wrapped in label)
+    const elementPosition = content.indexOf(element);
+    if (elementPosition !== -1) {
+      const beforeElement = content.substring(0, elementPosition);
+      const afterElement = content.substring(elementPosition + element.length);
+      
+      // Look for wrapping label
+      const labelOpenRegex = /<label[^>]*>(?:[^<]*<[^>]*>)*[^<]*$/i;
+      const labelCloseRegex = /^[^<]*(?:<[^>]*>[^<]*)*<\/label>/i;
+      
+      const hasOpenLabel = labelOpenRegex.test(beforeElement);
+      const hasCloseLabel = labelCloseRegex.test(afterElement);
+      
+      if (hasOpenLabel && hasCloseLabel) {
+        // Extract label text
+        const labelMatch = beforeElement.match(/<label[^>]*>([^<]*)$/i);
+        const labelText = labelMatch ? labelMatch[1].trim() : '';
+        
+        if (labelText) {
+          hasValidLabel = true;
+          labelMethods.push('implicit label');
+        } else {
+          issues.push({
+            type: '📋 Empty implicit label',
+            description: `${elementType} ${index} is wrapped in <label> but label text is empty`,
+            element: element.substring(0, 100) + '...'
+          });
+        }
+      } else {
+        issues.push({
+          type: '📋 Missing implicit label',
+          description: `${elementType} ${index} does not have an implicit (wrapped) <label>`,
+          element: element.substring(0, 100) + '...'
+        });
+      }
+    }
+    
+    // Check aria-label
+    if (ariaLabel && ariaLabel.trim()) {
+      hasValidLabel = true;
+      labelMethods.push('aria-label');
+    } else {
+      issues.push({
+        type: '📋 Missing aria-label',
+        description: `${elementType} ${index} aria-label attribute does not exist or is empty`,
+        element: element.substring(0, 100) + '...'
+      });
+    }
+    
+    // Check aria-labelledby
+    if (ariaLabelledby) {
+      const referencedIds = ariaLabelledby.split(/\s+/);
+      let validReferences = 0;
+      
+      referencedIds.forEach(refId => {
+        if (refId.trim()) {
+          const referencedElement = content.match(new RegExp(`<[^>]*id\\s*=\\s*["']${refId}["'][^>]*>([^<]*)</[^>]*>`, 'i'));
+          if (referencedElement && referencedElement[1].trim()) {
+            validReferences++;
+          }
+        }
+      });
+      
+      if (validReferences > 0) {
+        hasValidLabel = true;
+        labelMethods.push('aria-labelledby');
+      } else {
+        issues.push({
+          type: '📋 Invalid aria-labelledby',
+          description: `${elementType} ${index} aria-labelledby references elements that do not exist or are empty`,
+          element: element.substring(0, 100) + '...'
+        });
+      }
+    } else {
+      issues.push({
+        type: '📋 Missing aria-labelledby',
+        description: `${elementType} ${index} aria-labelledby attribute does not exist`,
+        element: element.substring(0, 100) + '...'
+      });
+    }
+    
+    // Check title attribute
+    if (!title || !title.trim()) {
+      issues.push({
+        type: '📋 Missing title',
+        description: `${elementType} ${index} has no title attribute`,
+        element: element.substring(0, 100) + '...'
+      });
+    }
+    
+    // Check if element needs role="none" or role="presentation" to override default semantics
+    const hasRole = /role\s*=/i.test(element);
+    if (!hasRole && !hasValidLabel) {
+      issues.push({
+        type: '📋 Missing role override',
+        description: `${elementType} ${index} default semantics were not overridden with role="none" or role="presentation"`,
+        element: element.substring(0, 100) + '...'
+      });
+    }
+    
+    return issues;
+  }
+
+  fixFormLabelsInContent(content) {
+    let fixed = content;
+    
+    // Fix input elements
+    const inputPatterns = [
+      /<input[^>]*type\s*=\s*["'](?:text|email|password|tel|url|search|number|date|time|datetime-local|month|week|color|range|file)["'][^>]*>/gi,
+      /<textarea[^>]*>/gi,
+      /<select[^>]*>/gi
+    ];
+    
+    inputPatterns.forEach(pattern => {
+      fixed = fixed.replace(pattern, (match) => {
+        return this.addFormElementLabeling(match, fixed);
+      });
+    });
+    
+    return fixed;
+  }
+
+  addFormElementLabeling(element, content) {
+    let enhanced = element;
+    
+    // Extract current attributes
+    const id = this.extractAttributeValue(element, 'id');
+    const name = this.extractAttributeValue(element, 'name');
+    const ariaLabel = this.extractAttributeValue(element, 'aria-label');
+    const title = this.extractAttributeValue(element, 'title');
+    const placeholder = this.extractAttributeValue(element, 'placeholder');
+    
+    // Generate appropriate label text
+    let labelText = this.generateFormLabelText(element, name, placeholder);
+    
+    // Add aria-label if missing
+    if (!ariaLabel && labelText) {
+      enhanced = enhanced.replace(/(<(?:input|textarea|select)[^>]*?)(\s*\/?>)/i, `$1 aria-label="${labelText}"$2`);
+      console.log(chalk.yellow(`  📋 Added aria-label="${labelText}" to form element`));
+    }
+    
+    // Add title if missing
+    if (!title && labelText) {
+      enhanced = enhanced.replace(/(<(?:input|textarea|select)[^>]*?)(\s*\/?>)/i, `$1 title="${labelText}"$2`);
+      console.log(chalk.yellow(`  📋 Added title="${labelText}" to form element`));
+    }
+    
+    // Add id if missing (for potential explicit labeling)
+    if (!id) {
+      const generatedId = this.generateFormElementId(element, name);
+      enhanced = enhanced.replace(/(<(?:input|textarea|select)[^>]*?)(\s*\/?>)/i, `$1 id="${generatedId}"$2`);
+      console.log(chalk.yellow(`  📋 Added id="${generatedId}" to form element`));
+    }
+    
+    return enhanced;
+  }
+
+  generateFormLabelText(element, name, placeholder) {
+    const lang = this.config.language;
+    
+    // Try to extract meaningful text from various sources
+    if (placeholder && placeholder.trim()) {
+      return placeholder.trim();
+    }
+    
+    if (name && name.trim()) {
+      // Convert name to readable text
+      const readable = name.replace(/[-_]/g, ' ')
+                          .replace(/([a-z])([A-Z])/g, '$1 $2')
+                          .toLowerCase();
+      
+      // Capitalize first letter
+      return readable.charAt(0).toUpperCase() + readable.slice(1);
+    }
+    
+    // Extract input type for generic labels
+    const typeMatch = element.match(/type\s*=\s*["']([^"']+)["']/i);
+    const inputType = typeMatch ? typeMatch[1] : 'text';
+    
+    // Generate type-specific labels
+    const typeLabels = {
+      ja: {
+        text: 'テキスト入力',
+        email: 'メールアドレス',
+        password: 'パスワード',
+        tel: '電話番号',
+        url: 'URL',
+        search: '検索',
+        number: '数値',
+        date: '日付',
+        time: '時刻',
+        file: 'ファイル選択',
+        textarea: 'テキストエリア',
+        select: '選択'
+      },
+      en: {
+        text: 'Text input',
+        email: 'Email address',
+        password: 'Password',
+        tel: 'Phone number',
+        url: 'URL',
+        search: 'Search',
+        number: 'Number',
+        date: 'Date',
+        time: 'Time',
+        file: 'File selection',
+        textarea: 'Text area',
+        select: 'Selection'
+      },
+      vi: {
+        text: 'Nhập văn bản',
+        email: 'Địa chỉ email',
+        password: 'Mật khẩu',
+        tel: 'Số điện thoại',
+        url: 'URL',
+        search: 'Tìm kiếm',
+        number: 'Số',
+        date: 'Ngày',
+        time: 'Thời gian',
+        file: 'Chọn file',
+        textarea: 'Vùng văn bản',
+        select: 'Lựa chọn'
+      }
+    };
+    
+    const labels = typeLabels[lang] || typeLabels.en;
+    
+    // Determine element type
+    let elementType = inputType;
+    if (element.includes('<textarea')) elementType = 'textarea';
+    if (element.includes('<select')) elementType = 'select';
+    
+    return labels[elementType] || labels.text;
+  }
+
+  generateFormElementId(element, name) {
+    if (name) {
+      return `${name}_input`;
+    }
+    
+    // Generate based on type
+    const typeMatch = element.match(/type\s*=\s*["']([^"']+)["']/i);
+    const inputType = typeMatch ? typeMatch[1] : 'text';
+    
+    const timestamp = Date.now().toString().slice(-6);
+    return `${inputType}_${timestamp}`;
+  }
+
+  extractAttributeValue(element, attributeName) {
+    const regex = new RegExp(`${attributeName}\\s*=\\s*["']([^"']*)["']`, 'i');
+    const match = element.match(regex);
+    return match ? match[1] : null;
+  }
+
   analyzeHeadingStructure(content) {
     const issues = [];
     
@@ -3175,6 +3540,557 @@ class AccessibilityFixer {
     });
     
     return issues;
+  }
+
+  async fixAllAccessibilityIssues(directory = '.') {
+    console.log(chalk.blue('🚀 Starting comprehensive accessibility fixes...'));
+    console.log('');
+    
+    const results = {
+      totalFiles: 0,
+      fixedFiles: 0,
+      totalIssues: 0,
+      steps: []
+    };
+    
+    try {
+      // Step 1: HTML lang attributes
+      console.log(chalk.blue('📝 Step 1: HTML lang attributes...'));
+      const langResults = await this.fixHtmlLang(directory);
+      const langFixed = langResults.filter(r => r.status === 'fixed').length;
+      results.steps.push({ step: 1, name: 'HTML lang attributes', fixed: langFixed });
+      
+      // Step 2: Alt attributes
+      console.log(chalk.blue('🖼️ Step 2: Alt attributes...'));
+      const altResults = await this.fixEmptyAltAttributes(directory);
+      const altFixed = altResults.filter(r => r.status === 'fixed').length;
+      const totalAltIssues = altResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 2, name: 'Alt attributes', fixed: altFixed, issues: totalAltIssues });
+      
+      // Step 3: Role attributes
+      console.log(chalk.blue('🎭 Step 3: Role attributes...'));
+      const roleResults = await this.fixRoleAttributes(directory);
+      const roleFixed = roleResults.filter(r => r.status === 'fixed').length;
+      const totalRoleIssues = roleResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 3, name: 'Role attributes', fixed: roleFixed, issues: totalRoleIssues });
+      
+      // Step 4: Form labels
+      console.log(chalk.blue('📋 Step 4: Form labels...'));
+      const formResults = await this.fixFormLabels(directory);
+      const formFixed = formResults.filter(r => r.status === 'fixed').length;
+      const totalFormIssues = formResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 4, name: 'Form labels', fixed: formFixed, issues: totalFormIssues });
+      
+      // Step 5: Button names
+      console.log(chalk.blue('🔘 Step 5: Button names...'));
+      const buttonResults = await this.fixButtonNames(directory);
+      const buttonFixed = buttonResults.filter(r => r.status === 'fixed').length;
+      const totalButtonIssues = buttonResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 5, name: 'Button names', fixed: buttonFixed, issues: totalButtonIssues });
+      
+      // Step 6: Link names
+      console.log(chalk.blue('🔗 Step 6: Link names...'));
+      const linkResults = await this.fixLinkNames(directory);
+      const linkFixed = linkResults.filter(r => r.status === 'fixed').length;
+      const totalLinkIssues = linkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 6, name: 'Link names', fixed: linkFixed, issues: totalLinkIssues });
+      
+      // Step 7: Landmarks
+      console.log(chalk.blue('🏛️ Step 7: Landmarks...'));
+      const landmarkResults = await this.fixLandmarks(directory);
+      const landmarkFixed = landmarkResults.filter(r => r.status === 'fixed').length;
+      const totalLandmarkIssues = landmarkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 7, name: 'Landmarks', fixed: landmarkFixed, issues: totalLandmarkIssues });
+      
+      // Step 8: Heading analysis
+      console.log(chalk.blue('📑 Step 8: Heading analysis...'));
+      const headingResults = await this.analyzeHeadings(directory);
+      const totalHeadingSuggestions = headingResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 8, name: 'Heading analysis', suggestions: totalHeadingSuggestions });
+      console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
+      
+      // Step 9: Broken links check
+      console.log(chalk.blue('🔗 Step 9: Broken links check...'));
+      const brokenLinksResults = await this.checkBrokenLinks(directory);
+      const totalBrokenLinks = brokenLinksResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 9, name: 'Broken links check', issues: totalBrokenLinks });
+      console.log(chalk.gray('💡 Broken link issues require manual review and cannot be auto-fixed'));
+      
+      // Step 10: Cleanup duplicate roles
+      console.log(chalk.blue('🧹 Step 10: Cleanup duplicate roles...'));
+      const cleanupResults = await this.cleanupDuplicateRoles(directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      results.steps.push({ step: 10, name: 'Cleanup duplicate roles', fixed: cleanupFixed });
+      
+      // Calculate totals
+      results.totalFiles = Math.max(
+        langResults.length, altResults.length, roleResults.length, formResults.length,
+        buttonResults.length, linkResults.length, landmarkResults.length, 
+        headingResults.length, brokenLinksResults.length, cleanupResults.length
+      );
+      
+      results.fixedFiles = new Set([
+        ...langResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...altResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...roleResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...formResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...buttonResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...linkResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...landmarkResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...cleanupResults.filter(r => r.status === 'fixed').map(r => r.file)
+      ]).size;
+      
+      results.totalIssues = totalAltIssues + totalRoleIssues + totalFormIssues + 
+                           totalButtonIssues + totalLinkIssues + totalLandmarkIssues;
+      
+      // Final summary
+      console.log(chalk.green('\n🎉 All accessibility fixes completed!'));
+      console.log(chalk.blue('📊 Final Summary:'));
+      console.log(chalk.blue(`   Total files scanned: ${results.totalFiles}`));
+      console.log(chalk.blue(`   Files fixed: ${results.fixedFiles}`));
+      console.log(chalk.blue(`   Total issues resolved: ${results.totalIssues}`));
+      
+      if (this.config.dryRun) {
+        console.log(chalk.yellow('\n💡 This was a dry run. Use without --dry-run to apply changes.'));
+      }
+      
+      return results;
+      
+    } catch (error) {
+      console.error(chalk.red(`❌ Error during comprehensive fixes: ${error.message}`));
+      throw error;
+    }
+  }
+
+  async fixButtonNames(directory = '.') {
+    console.log(chalk.blue('🔘 Fixing button names...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeButtonNames(content);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            totalIssuesFound++;
+          });
+        }
+        
+        const fixed = this.fixButtonNamesInContent(content);
+        
+        if (fixed !== content) {
+          if (this.config.backupFiles) {
+            await fs.writeFile(`${file}.backup`, content);
+          }
+          
+          if (!this.config.dryRun) {
+            await fs.writeFile(file, fixed);
+          }
+          
+          console.log(chalk.green(`✅ Fixed button names in: ${file}`));
+          results.push({ file, status: 'fixed', issues: issues.length });
+        } else {
+          results.push({ file, status: 'no-change', issues: issues.length });
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} button name issues across ${results.length} files`));
+    return results;
+  }
+
+  analyzeButtonNames(content) {
+    const issues = [];
+    const buttonPattern = /<button[^>]*>[\s\S]*?<\/button>/gi;
+    const buttons = content.match(buttonPattern) || [];
+    
+    buttons.forEach((button, index) => {
+      const buttonText = button.replace(/<[^>]*>/g, '').trim();
+      const hasAriaLabel = /aria-label\s*=/i.test(button);
+      const hasTitle = /title\s*=/i.test(button);
+      
+      if (!buttonText && !hasAriaLabel && !hasTitle) {
+        issues.push({
+          type: '🔘 Empty button',
+          description: `Button ${index + 1} has no text content, aria-label, or title`,
+          element: button.substring(0, 100) + '...'
+        });
+      }
+    });
+    
+    return issues;
+  }
+
+  fixButtonNamesInContent(content) {
+    let fixed = content;
+    
+    const buttonPattern = /<button([^>]*)>([\s\S]*?)<\/button>/gi;
+    
+    fixed = fixed.replace(buttonPattern, (match, attributes, innerContent) => {
+      const buttonText = innerContent.replace(/<[^>]*>/g, '').trim();
+      const hasAriaLabel = /aria-label\s*=/i.test(attributes);
+      const hasTitle = /title\s*=/i.test(attributes);
+      
+      if (!buttonText && !hasAriaLabel && !hasTitle) {
+        const buttonName = this.generateButtonName(attributes, innerContent);
+        const updatedAttributes = attributes + ` aria-label="${buttonName}" title="${buttonName}"`;
+        console.log(chalk.yellow(`  🔘 Added aria-label and title to empty button: "${buttonName}"`));
+        return `<button${updatedAttributes}>${innerContent}</button>`;
+      }
+      
+      return match;
+    });
+    
+    return fixed;
+  }
+
+  generateButtonName(attributes, innerContent) {
+    const lang = this.config.language;
+    
+    // Try to extract meaningful name from onclick or other attributes
+    const onclickMatch = attributes.match(/onclick\s*=\s*["']([^"']+)["']/i);
+    if (onclickMatch) {
+      const onclick = onclickMatch[1];
+      if (onclick.includes('submit')) return lang === 'ja' ? '送信' : 'Submit';
+      if (onclick.includes('cancel')) return lang === 'ja' ? 'キャンセル' : 'Cancel';
+      if (onclick.includes('close')) return lang === 'ja' ? '閉じる' : 'Close';
+      if (onclick.includes('save')) return lang === 'ja' ? '保存' : 'Save';
+    }
+    
+    // Check for common class names
+    const classMatch = attributes.match(/class\s*=\s*["']([^"']+)["']/i);
+    if (classMatch) {
+      const className = classMatch[1].toLowerCase();
+      if (className.includes('submit')) return lang === 'ja' ? '送信' : 'Submit';
+      if (className.includes('cancel')) return lang === 'ja' ? 'キャンセル' : 'Cancel';
+      if (className.includes('close')) return lang === 'ja' ? '閉じる' : 'Close';
+      if (className.includes('save')) return lang === 'ja' ? '保存' : 'Save';
+    }
+    
+    return lang === 'ja' ? 'ボタン' : 'Button';
+  }
+
+  async fixLinkNames(directory = '.') {
+    console.log(chalk.blue('🔗 Fixing link names...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeLinkNames(content);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            totalIssuesFound++;
+          });
+        }
+        
+        const fixed = this.fixLinkNamesInContent(content);
+        
+        if (fixed !== content) {
+          if (this.config.backupFiles) {
+            await fs.writeFile(`${file}.backup`, content);
+          }
+          
+          if (!this.config.dryRun) {
+            await fs.writeFile(file, fixed);
+          }
+          
+          console.log(chalk.green(`✅ Fixed link names in: ${file}`));
+          results.push({ file, status: 'fixed', issues: issues.length });
+        } else {
+          results.push({ file, status: 'no-change', issues: issues.length });
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} link name issues across ${results.length} files`));
+    return results;
+  }
+
+  analyzeLinkNames(content) {
+    const issues = [];
+    const linkPattern = /<a[^>]*href[^>]*>[\s\S]*?<\/a>/gi;
+    const links = content.match(linkPattern) || [];
+    
+    links.forEach((link, index) => {
+      const linkText = link.replace(/<[^>]*>/g, '').trim();
+      const hasAriaLabel = /aria-label\s*=/i.test(link);
+      const hasTitle = /title\s*=/i.test(link);
+      
+      if (!linkText && !hasAriaLabel && !hasTitle) {
+        issues.push({
+          type: '🔗 Empty link',
+          description: `Link ${index + 1} has no text content, aria-label, or title`,
+          element: link.substring(0, 100) + '...'
+        });
+      }
+      
+      // Check for generic link text
+      const genericTexts = ['click here', 'read more', 'more', 'here', 'link'];
+      if (genericTexts.some(generic => linkText.toLowerCase().includes(generic))) {
+        issues.push({
+          type: '🔗 Generic link text',
+          description: `Link ${index + 1} has generic text: "${linkText}"`,
+          element: link.substring(0, 100) + '...'
+        });
+      }
+    });
+    
+    return issues;
+  }
+
+  fixLinkNamesInContent(content) {
+    let fixed = content;
+    
+    const linkPattern = /<a([^>]*href[^>]*?)>([\s\S]*?)<\/a>/gi;
+    
+    fixed = fixed.replace(linkPattern, (match, attributes, innerContent) => {
+      const linkText = innerContent.replace(/<[^>]*>/g, '').trim();
+      const hasAriaLabel = /aria-label\s*=/i.test(attributes);
+      const hasTitle = /title\s*=/i.test(attributes);
+      
+      if (!linkText && !hasAriaLabel && !hasTitle) {
+        const linkName = this.generateLinkName(attributes, innerContent);
+        const updatedAttributes = attributes + ` aria-label="${linkName}" title="${linkName}"`;
+        console.log(chalk.yellow(`  🔗 Added aria-label and title to empty link: "${linkName}"`));
+        return `<a${updatedAttributes}>${innerContent}</a>`;
+      }
+      
+      return match;
+    });
+    
+    return fixed;
+  }
+
+  generateLinkName(attributes, innerContent) {
+    const lang = this.config.language;
+    
+    // Try to extract href for context
+    const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i);
+    if (hrefMatch) {
+      const href = hrefMatch[1];
+      if (href.includes('mailto:')) return lang === 'ja' ? 'メール送信' : 'Send email';
+      if (href.includes('tel:')) return lang === 'ja' ? '電話をかける' : 'Make call';
+      if (href.includes('#')) return lang === 'ja' ? 'ページ内リンク' : 'Page anchor';
+      if (href.includes('.pdf')) return lang === 'ja' ? 'PDFを開く' : 'Open PDF';
+    }
+    
+    return lang === 'ja' ? 'リンク' : 'Link';
+  }
+
+  async fixLandmarks(directory = '.') {
+    console.log(chalk.blue('🏛️ Fixing landmarks...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeLandmarks(content);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            totalIssuesFound++;
+          });
+        }
+        
+        results.push({ file, status: 'no-change', issues: issues.length });
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} landmark issues across ${results.length} files`));
+    return results;
+  }
+
+  analyzeLandmarks(content) {
+    const issues = [];
+    
+    const hasMain = /<main[^>]*>/i.test(content);
+    const hasNav = /<nav[^>]*>/i.test(content);
+    const hasHeader = /<header[^>]*>/i.test(content);
+    const hasFooter = /<footer[^>]*>/i.test(content);
+    
+    if (!hasMain) {
+      issues.push({
+        type: '🏛️ Missing main landmark',
+        description: 'Page should have a main landmark',
+        suggestion: 'Add <main> element around primary content'
+      });
+    }
+    
+    return issues;
+  }
+
+  async analyzeHeadings(directory = '.') {
+    console.log(chalk.blue('📑 Analyzing heading structure...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeHeadingStructure(content);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            if (issue.suggestion) {
+              console.log(chalk.gray(`    💡 ${issue.suggestion}`));
+            }
+            totalIssuesFound++;
+          });
+        }
+        
+        results.push({ file, status: 'analyzed', issues: issues.length });
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Analyzed heading structure in ${results.length} files`));
+    console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
+    return results;
+  }
+
+  async checkBrokenLinks(directory = '.') {
+    console.log(chalk.blue('🔗 Checking for broken links and 404 resources...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeBrokenLinks(content, file);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            if (issue.suggestion) {
+              console.log(chalk.gray(`    💡 ${issue.suggestion}`));
+            }
+            totalIssuesFound++;
+          });
+        }
+        
+        results.push({ file, status: 'analyzed', issues: issues.length });
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Analyzed links in ${results.length} files`));
+    console.log(chalk.gray('💡 Broken link issues require manual review and cannot be auto-fixed'));
+    return results;
+  }
+
+  analyzeBrokenLinks(content, filePath) {
+    const issues = [];
+    
+    // Check for local image files
+    const imgPattern = /<img[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi;
+    let match;
+    
+    while ((match = imgPattern.exec(content)) !== null) {
+      const src = match[1];
+      
+      // Skip external URLs and data URLs
+      if (src.startsWith('http') || src.startsWith('data:') || src.startsWith('//')) {
+        continue;
+      }
+      
+      // Check if local file exists
+      const fullPath = path.resolve(path.dirname(filePath), src);
+      try {
+        require('fs').statSync(fullPath);
+      } catch (error) {
+        issues.push({
+          type: '📁 Image not found',
+          description: `img file does not exist: ${src}`,
+          suggestion: 'Create the missing file or update the image path'
+        });
+      }
+    }
+    
+    return issues;
+  }
+
+  async cleanupDuplicateRoles(directory = '.') {
+    console.log(chalk.blue('🧹 Cleaning up duplicate role attributes...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const fixed = this.cleanupDuplicateRolesInContent(content);
+        
+        if (fixed !== content) {
+          if (this.config.backupFiles) {
+            await fs.writeFile(`${file}.backup`, content);
+          }
+          
+          if (!this.config.dryRun) {
+            await fs.writeFile(file, fixed);
+          }
+          
+          console.log(chalk.green(`✅ Cleaned duplicate roles in: ${file}`));
+          results.push({ file, status: 'fixed' });
+          totalIssuesFound++;
+        } else {
+          results.push({ file, status: 'no-change' });
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Cleaned duplicate roles in ${totalIssuesFound} files`));
+    return results;
+  }
+
+  cleanupDuplicateRolesInContent(content) {
+    let fixed = content;
+    
+    // Remove duplicate role attributes
+    fixed = fixed.replace(/(\s+role\s*=\s*["'][^"']*["'])\s+role\s*=\s*["'][^"']*["']/gi, '$1');
+    
+    return fixed;
   }
 
   async findHtmlFiles(directory) {

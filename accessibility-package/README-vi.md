@@ -321,6 +321,7 @@ console.log("Hoàn thành sửa lỗi với enhanced features:", results);
 ## 🔧 Quản lý Package
 
 ### Kiểm tra thông tin package
+
 ```bash
 # Xem version hiện tại
 gbu-a11y --version
@@ -335,6 +336,7 @@ npm list -g | grep gbu-accessibility-package
 ```
 
 ### Cập nhật package
+
 ```bash
 # Kiểm tra version mới
 npm outdated -g gbu-accessibility-package
@@ -348,6 +350,7 @@ npm install -g gbu-accessibility-package@latest
 ```
 
 ### Quản lý cache
+
 ```bash
 # Xem cache info
 npm cache verify
