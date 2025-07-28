@@ -18,15 +18,17 @@
 - 🔗 **Link Names** - Fix empty links and detect generic link text
 - 🏛️ **Landmarks** - Add missing main and navigation landmarks
 - 📑 **Heading Analysis** - Analyze heading structure with suggestions (no auto-fix)
+- 🔍 **Broken Links Detection** - Detect broken links and 404 resources
 - 🧹 **Duplicate Cleanup** - Remove duplicate role attributes
 
-### 🚀 **Enhanced Alt Attribute Features (NEW!)**
-- 🔍 **Comprehensive Analysis** - Image type classification and quality checking
-- 🎨 **Diverse Alt Generation** - Multiple strategies for creative alt text
-- 🌐 **Multi-language Support** - Japanese, English, Vietnamese vocabulary
+### 🚀 **Enhanced Alt Attribute Features (Integrated!)**
+- 🔍 **Comprehensive Analysis** - Image type classification and quality checking built-in
+- 🎨 **Diverse Alt Generation** - Multiple strategies for creative alt text integrated in core
+- 🌐 **Multi-language Support** - Japanese, English, Vietnamese vocabulary built-in
 - 🎭 **Creativity Levels** - Conservative, Balanced, Creative modes
 - 🧠 **Context Awareness** - Brand, emotional, and technical context integration
 - 📊 **Data Visualization** - Specialized descriptions for charts and graphs
+- 🧹 **Clean Architecture** - All enhanced features integrated in a single file
 
 ### 🛠️ **Utility Features**
 - 📁 **Batch Processing** - Process entire directories recursively
@@ -103,6 +105,7 @@ Fix Modes:
   --links-only             Fix link names + cleanup
   --landmarks-only         Fix landmarks + cleanup
   --headings-only          Analyze heading structure (no auto-fix)
+  --links-check            Check for broken links and 404 resources
   --cleanup-only           Only cleanup duplicate role attributes
 
 Enhanced Alt Options:
@@ -131,6 +134,7 @@ gbu-a11y -l en ./public
 gbu-a11y --alt-only          # Fix alt attributes + cleanup
 gbu-a11y --forms-only        # Fix form labels + cleanup
 gbu-a11y --buttons-only      # Fix button names + cleanup
+gbu-a11y --links-check       # Check broken links + cleanup
 
 # Enhanced alt attribute features
 gbu-a11y --enhanced-alt                                    # Basic enhanced mode
@@ -208,12 +212,12 @@ await fixer.fixFormLabels('./src');
 await fixer.fixButtonNames('./src');
 ```
 
-### Enhanced Alt Attribute Mode
+### Enhanced Alt Attribute Mode (Integrated)
 
 ```javascript
-const { AccessibilityFixer, EnhancedAltChecker } = require('gbu-accessibility-package');
+const { AccessibilityFixer } = require('gbu-accessibility-package');
 
-// Use AccessibilityFixer with enhanced mode
+// Use AccessibilityFixer with enhanced mode (integrated)
 const fixer = new AccessibilityFixer({
   language: 'en',
   enhancedAltMode: true,
@@ -224,14 +228,10 @@ const fixer = new AccessibilityFixer({
 
 await fixer.fixEmptyAltAttributes('./src');
 
-// Use EnhancedAltChecker separately
-const checker = new EnhancedAltChecker({
-  language: 'ja',
-  strictMode: true
-});
-
-const issues = checker.analyzeAltAttributes(htmlContent);
-console.log('Alt attribute issues found:', issues);
+// All enhanced features are now integrated in AccessibilityFixer
+// No need to import separate classes
+const results = await fixer.fixAllAccessibilityIssues('./src');
+console.log('Accessibility fixes completed with enhanced features:', results);
 ```
 
 ## 🎯 What Gets Fixed
@@ -259,6 +259,12 @@ console.log('Alt attribute issues found:', issues);
 - **Missing landmarks** → Main and navigation landmarks
 - **Heading structure** → Analysis and recommendations
 - **Role attributes** → WCAG-compliant role assignments
+
+### Link Validation
+- **Broken links** → Detect HTTP 404, 500, timeout errors
+- **Missing resources** → Check for missing local files
+- **Invalid URLs** → Detect malformed URL formats
+- **Slow links** → Warn about timeouts and slow responses
 
 ## 🧪 Testing and Demo
 

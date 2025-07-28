@@ -20,6 +20,7 @@
     "links-only": "node cli.js --links-only",
     "landmarks-only": "node cli.js --landmarks-only",
     "headings-only": "node cli.js --headings-only",
+    "links-check": "node cli.js --links-check",
     "cleanup-only": "node cli.js --cleanup-only",
     "no-backup": "node cli.js --no-backup",
     "cleanup-backups": "find . -name '*.backup' -type f -delete",

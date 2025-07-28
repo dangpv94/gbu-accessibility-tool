@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2024-07-28
+
+### Added
+- **Enhanced Alt Attribute Integration**: Tích hợp hoàn toàn EnhancedAltChecker và EnhancedAltGenerator vào AccessibilityFixer
+- **Broken Links Detection**: Tính năng phát hiện liên kết bị hỏng và tài nguyên 404
+- **Clean Architecture**: Tất cả tính năng enhanced được tích hợp trong một file duy nhất
+- **Improved Performance**: Giảm overhead từ việc import nhiều module riêng biệt
+- **Simplified API**: Không cần import các class enhanced riêng biệt
+
+### Changed
+- **BREAKING**: EnhancedAltChecker và EnhancedAltGenerator không còn là class riêng biệt
+- **Integrated Features**: Tất cả tính năng enhanced alt đã được tích hợp vào AccessibilityFixer
+- **Cleaner Codebase**: Loại bỏ các file enhanced riêng lẻ để có kiến trúc gọn gàng hơn
+- **Updated Documentation**: README và README-vi được cập nhật để phản ánh kiến trúc mới
+
+### Migration Guide
+- **For most users**: Không cần thay đổi gì - tất cả tính năng vẫn hoạt động như cũ
+- **For programmatic usage**: Chỉ cần import AccessibilityFixer, không cần import EnhancedAltChecker/Generator riêng
+- **Enhanced features**: Vẫn có sẵn thông qua các config options trong AccessibilityFixer
+
 ## [3.1.0] - 2024-07-25
 
 ### Changed

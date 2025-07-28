@@ -27,6 +27,7 @@ const options = {
   linksOnly: false,
   landmarksOnly: false,
   headingsOnly: false,
+  brokenLinksOnly: false,
   // Enhanced alt options
   enhancedAlt: false,
   altCreativity: 'balanced', // conservative, balanced, creative
@@ -91,6 +92,10 @@ for (let i = 0; i < args.length; i++) {
     case '--headings-only':
       options.headingsOnly = true;
       break;
+    case '--links-check':
+    case '--broken-links':
+      options.brokenLinksOnly = true;
+      break;
     case '--enhanced-alt':
       options.enhancedAlt = true;
       break;
@@ -133,6 +138,7 @@ Options:
   --links-only             Fix link names + cleanup
   --landmarks-only         Fix landmarks + cleanup
   --headings-only          Analyze heading structure (no auto-fix)
+  --links-check            Check for broken links and 404 resources (no auto-fix)
   --enhanced-alt           Use enhanced alt attribute analysis and generation
   --alt-creativity <mode>  Alt text creativity: conservative, balanced, creative (default: balanced)
   --include-emotions       Include emotional descriptors in alt text
@@ -162,6 +168,7 @@ Examples:
   node cli.js --links-only             # Fix link names + cleanup
   node cli.js --landmarks-only         # Fix landmarks + cleanup
   node cli.js --headings-only          # Analyze heading structure only
+  node cli.js --links-check            # Check for broken links and 404s
   node cli.js --cleanup-only           # Only cleanup duplicate roles
   node cli.js ./src                    # Fix src directory (comprehensive)
   node cli.js -l en --dry-run ./dist   # Preview comprehensive fixes in English
@@ -220,7 +227,8 @@ async function main() {
   try {
     // Handle different modes - All modes now include cleanup
     if (options.cleanupOnly || options.altOnly || options.langOnly || options.roleOnly || 
-        options.formsOnly || options.buttonsOnly || options.linksOnly || options.landmarksOnly || options.headingsOnly) {
+        options.formsOnly || options.buttonsOnly || options.linksOnly || options.landmarksOnly || 
+        options.headingsOnly || options.brokenLinksOnly) {
       // Individual modes - handle each separately, then run cleanup
     } else {
       // Default mode: Run comprehensive fix (all fixes including cleanup)
@@ -389,6 +397,18 @@ async function main() {
       console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
       
       showCompletionMessage(options, 'Heading analysis');
+      return;
+      
+    } else if (options.brokenLinksOnly) {
+      // Check broken links only (no fixes, no cleanup)
+      console.log(chalk.blue('🔗 Running broken links check only...'));
+      const linkResults = await fixer.checkBrokenLinks(options.directory);
+      const totalBrokenLinks = linkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      
+      console.log(chalk.green(`\n✅ Checked links in ${linkResults.length} files (${totalBrokenLinks} issues found)`));
+      console.log(chalk.gray('💡 Broken link issues require manual review and cannot be auto-fixed'));
+      
+      showCompletionMessage(options, 'Broken links check');
       return;
     }
 

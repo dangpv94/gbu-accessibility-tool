@@ -9,6 +9,7 @@
 ## ✨ Tính năng
 
 ### 🎯 **Sửa lỗi Accessibility cơ bản**
+
 - 🖼️ **Tạo Alt Text thông minh** - Alt attributes nhận biết ngữ cảnh cho hình ảnh
 - 🏷️ **Hỗ trợ Aria Label** - Tự động tạo aria-label phù hợp với alt text
 - 🌐 **HTML Lang Attributes** - Tự động sửa thuộc tính ngôn ngữ
@@ -18,17 +19,21 @@
 - 🔗 **Link Names** - Sửa links rỗng và phát hiện text generic
 - 🏛️ **Landmarks** - Thêm main và navigation landmarks thiếu
 - 📑 **Phân tích Heading** - Phân tích cấu trúc heading với gợi ý (không tự động sửa)
+- 🔍 **Broken Links Detection** - Phát hiện liên kết bị hỏng và tài nguyên 404
 - 🧹 **Dọn dẹp Duplicate** - Loại bỏ role attributes trùng lặp
 
-### 🚀 **Tính năng Enhanced Alt Attribute (MỚI!)**
-- 🔍 **Phân tích toàn diện** - Phân loại loại hình ảnh và kiểm tra chất lượng
-- 🎨 **Tạo Alt đa dạng** - Nhiều chiến lược cho alt text sáng tạo
-- 🌐 **Hỗ trợ đa ngôn ngữ** - Từ vựng tiếng Nhật, Anh, Việt
+### 🚀 **Tính năng Enhanced Alt Attribute (Đã tích hợp!)**
+
+- 🔍 **Phân tích toàn diện** - Phân loại loại hình ảnh và kiểm tra chất lượng tích hợp sẵn
+- 🎨 **Tạo Alt đa dạng** - Nhiều chiến lược cho alt text sáng tạo được tích hợp trong core
+- 🌐 **Hỗ trợ đa ngôn ngữ** - Từ vựng tiếng Nhật, Anh, Việt tích hợp sẵn
 - 🎭 **Mức độ sáng tạo** - Chế độ Conservative, Balanced, Creative
 - 🧠 **Nhận biết ngữ cảnh** - Tích hợp ngữ cảnh thương hiệu, cảm xúc, kỹ thuật
 - 📊 **Trực quan hóa dữ liệu** - Mô tả chuyên biệt cho biểu đồ và đồ thị
+- 🧹 **Kiến trúc gọn gàng** - Tất cả tính năng enhanced được tích hợp trong một file duy nhất
 
 ### 🛠️ **Tính năng tiện ích**
+
 - 📁 **Xử lý hàng loạt** - Xử lý toàn bộ thư mục đệ quy
 - 💾 **Backup tùy chọn** - Tạo file backup khi cần với flag --backup
 - 🔍 **Chế độ Dry Run** - Xem trước thay đổi trước khi áp dụng
@@ -103,6 +108,7 @@ Chế độ sửa lỗi:
   --links-only             Sửa link names + dọn dẹp
   --landmarks-only         Sửa landmarks + dọn dẹp
   --headings-only          Phân tích cấu trúc heading (không tự động sửa)
+  --links-check            Kiểm tra liên kết bị hỏng và tài nguyên 404
   --cleanup-only           Chỉ dọn dẹp role attributes trùng lặp
 
 Tùy chọn Enhanced Alt:
@@ -131,6 +137,7 @@ gbu-a11y -l en ./public
 gbu-a11y --alt-only          # Sửa alt attributes + dọn dẹp
 gbu-a11y --forms-only        # Sửa form labels + dọn dẹp
 gbu-a11y --buttons-only      # Sửa button names + dọn dẹp
+gbu-a11y --links-check       # Kiểm tra liên kết bị hỏng + dọn dẹp
 
 # Tính năng enhanced alt attribute
 gbu-a11y --enhanced-alt                                    # Chế độ enhanced cơ bản
@@ -149,6 +156,7 @@ gbu-a11y --enhanced-alt --dry-run                          # Xem trước sửa 
 ### Mức độ sáng tạo
 
 #### Conservative (Bảo thủ)
+
 - Mô tả đơn giản, thực tế
 - Tập trung vào chức năng cơ bản
 - Biến thể từ vựng tối thiểu
@@ -156,6 +164,7 @@ gbu-a11y --enhanced-alt --dry-run                          # Xem trước sửa 
 **Ví dụ**: `alt="Biểu đồ"`, `alt="Logo"`
 
 #### Balanced (Cân bằng - Mặc định)
+
 - Mô tả nhận biết ngữ cảnh
 - Sáng tạo vừa phải
 - Cân bằng giữa đơn giản và chi tiết
@@ -163,6 +172,7 @@ gbu-a11y --enhanced-alt --dry-run                          # Xem trước sửa 
 **Ví dụ**: `alt="Biểu đồ hiệu suất bán hàng"`, `alt="Logo công ty"`
 
 #### Creative (Sáng tạo)
+
 - Mô tả phong phú, chi tiết
 - Tích hợp ngữ cảnh cảm xúc
 - Nhận biết thương hiệu và ngữ cảnh cao
@@ -189,54 +199,51 @@ gbu-a11y --enhanced-alt --dry-run                          # Xem trước sửa 
 ### Sử dụng cơ bản
 
 ```javascript
-const { AccessibilityFixer } = require('gbu-accessibility-package');
+const { AccessibilityFixer } = require("gbu-accessibility-package");
 
 const fixer = new AccessibilityFixer({
-  language: 'vi',
+  language: "vi",
   backupFiles: true,
-  dryRun: false
+  dryRun: false,
 });
 
 // Sửa tất cả vấn đề accessibility
-fixer.fixAllAccessibilityIssues('./src').then(results => {
-  console.log('Hoàn thành sửa lỗi accessibility:', results);
+fixer.fixAllAccessibilityIssues("./src").then((results) => {
+  console.log("Hoàn thành sửa lỗi accessibility:", results);
 });
 
 // Sửa các vấn đề cụ thể
-await fixer.fixEmptyAltAttributes('./src');
-await fixer.fixFormLabels('./src');
-await fixer.fixButtonNames('./src');
+await fixer.fixEmptyAltAttributes("./src");
+await fixer.fixFormLabels("./src");
+await fixer.fixButtonNames("./src");
 ```
 
-### Chế độ Enhanced Alt Attribute
+### Chế độ Enhanced Alt Attribute (Tích hợp sẵn)
 
 ```javascript
-const { AccessibilityFixer, EnhancedAltChecker } = require('gbu-accessibility-package');
+const { AccessibilityFixer } = require("gbu-accessibility-package");
 
-// Sử dụng AccessibilityFixer với chế độ enhanced
+// Sử dụng AccessibilityFixer với chế độ enhanced (tích hợp sẵn)
 const fixer = new AccessibilityFixer({
-  language: 'vi',
+  language: "vi",
   enhancedAltMode: true,
-  altCreativity: 'creative',
+  altCreativity: "creative",
   includeEmotions: true,
-  strictAltChecking: true
+  strictAltChecking: true,
 });
 
-await fixer.fixEmptyAltAttributes('./src');
+await fixer.fixEmptyAltAttributes("./src");
 
-// Sử dụng EnhancedAltChecker riêng biệt
-const checker = new EnhancedAltChecker({
-  language: 'vi',
-  strictMode: true
-});
-
-const issues = checker.analyzeAltAttributes(htmlContent);
-console.log('Tìm thấy vấn đề alt attribute:', issues);
+// Tất cả tính năng enhanced đã được tích hợp trong AccessibilityFixer
+// Không cần import thêm class riêng biệt
+const results = await fixer.fixAllAccessibilityIssues("./src");
+console.log("Hoàn thành sửa lỗi với enhanced features:", results);
 ```
 
 ## 🎯 Những gì được sửa
 
 ### Alt Attributes (Chế độ Enhanced)
+
 - **Alt attributes thiếu** → Tạo alt text nhận biết ngữ cảnh
 - **Alt attributes rỗng** → Mô tả thông minh dựa trên nội dung
 - **Alt text generic** → Mô tả cụ thể, có ý nghĩa
@@ -245,20 +252,30 @@ console.log('Tìm thấy vấn đề alt attribute:', issues);
 - **Trực quan hóa dữ liệu** → Loại biểu đồ + xu hướng + dữ liệu chính
 
 ### Accessibility Form
+
 - **Form labels thiếu** → Tạo aria-label thông minh
 - **Input không có label** → Gợi ý label dựa trên ngữ cảnh
 - **Cấu trúc form** → Liên kết label phù hợp
 
 ### Phần tử tương tác
+
 - **Button rỗng** → Tên button dựa trên hành động
 - **Text link generic** → Mục đích link mô tả
 - **Tên button thiếu** → Mô tả dựa trên chức năng
 
 ### Cấu trúc tài liệu
+
 - **Lang attributes thiếu** → Phát hiện ngôn ngữ tự động
 - **Landmark thiếu** → Main và navigation landmarks
 - **Cấu trúc heading** → Phân tích và khuyến nghị
 - **Role attributes** → Gán role tuân thủ WCAG
+
+### Kiểm tra liên kết
+
+- **Liên kết bị hỏng** → Phát hiện HTTP 404, 500, timeout
+- **Tài nguyên không tồn tại** → Kiểm tra file local thiếu
+- **URL không hợp lệ** → Phát hiện định dạng URL sai
+- **Liên kết chậm** → Cảnh báo timeout và phản hồi chậm
 
 ## 🧪 Kiểm tra và Demo
 

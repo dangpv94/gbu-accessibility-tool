@@ -6,8 +6,1225 @@
 const fs = require('fs').promises;
 const path = require('path');
 const chalk = require('chalk');
-const EnhancedAltChecker = require('./enhanced-alt-checker.js');
-const EnhancedAltGenerator = require('./enhanced-alt-generator.js');
+
+/**
+ * Enhanced Alt Text Generator
+ * Tạo alt text thông minh và đa dạng dựa trên AI và ngữ cảnh
+ */
+class EnhancedAltGenerator {
+  constructor(config = {}) {
+    this.config = {
+      language: config.language || 'ja',
+      creativity: config.creativity || 'balanced', // conservative, balanced, creative
+      includeEmotions: config.includeEmotions || false,
+      includeBrandContext: config.includeBrandContext || true,
+      maxLength: config.maxLength || 125,
+      ...config
+    };
+    
+    // Từ điển đa ngôn ngữ
+    this.vocabulary = this.initializeVocabulary();
+  }
+
+  initializeVocabulary() {
+    return {
+      ja: {
+        types: {
+          person: ['人物', '人', '男性', '女性', '子供', '大人'],
+          object: ['物', '商品', 'アイテム', '製品'],
+          nature: ['自然', '風景', '景色', '環境'],
+          building: ['建物', '建築', '構造物', '施設'],
+          food: ['食べ物', '料理', '食品', 'グルメ'],
+          technology: ['技術', 'テクノロジー', '機器', 'デバイス'],
+          art: ['芸術', 'アート', '作品', 'デザイン'],
+          vehicle: ['乗り物', '車両', '交通手段']
+        },
+        emotions: {
+          positive: ['明るい', '楽しい', '美しい', '素晴らしい', '魅力的な'],
+          neutral: ['シンプルな', '清潔な', '整然とした', 'プロフェッショナルな'],
+          dynamic: ['活気のある', 'エネルギッシュな', 'ダイナミックな', '力強い']
+        },
+        actions: {
+          showing: ['示している', '表示している', '見せている'],
+          working: ['作業している', '働いている', '取り組んでいる'],
+          enjoying: ['楽しんでいる', '満喫している', '味わっている'],
+          creating: ['作成している', '制作している', '開発している']
+        },
+        contexts: {
+          business: ['ビジネス', '企業', '会社', '職場'],
+          education: ['教育', '学習', '研修', 'トレーニング'],
+          lifestyle: ['ライフスタイル', '日常', '生活', '暮らし'],
+          technology: ['IT', 'デジタル', 'オンライン', 'ウェブ']
+        }
+      },
+      en: {
+        types: {
+          person: ['person', 'people', 'individual', 'team', 'group'],
+          object: ['object', 'item', 'product', 'tool', 'equipment'],
+          nature: ['nature', 'landscape', 'scenery', 'environment'],
+          building: ['building', 'architecture', 'structure', 'facility'],
+          food: ['food', 'cuisine', 'dish', 'meal', 'delicacy'],
+          technology: ['technology', 'device', 'gadget', 'equipment'],
+          art: ['art', 'artwork', 'design', 'creation'],
+          vehicle: ['vehicle', 'transportation', 'automobile']
+        },
+        emotions: {
+          positive: ['bright', 'cheerful', 'beautiful', 'wonderful', 'attractive'],
+          neutral: ['simple', 'clean', 'organized', 'professional'],
+          dynamic: ['vibrant', 'energetic', 'dynamic', 'powerful']
+        },
+        actions: {
+          showing: ['showing', 'displaying', 'presenting'],
+          working: ['working', 'operating', 'engaging'],
+          enjoying: ['enjoying', 'experiencing', 'savoring'],
+          creating: ['creating', 'developing', 'building']
+        },
+        contexts: {
+          business: ['business', 'corporate', 'company', 'workplace'],
+          education: ['education', 'learning', 'training', 'academic'],
+          lifestyle: ['lifestyle', 'daily life', 'personal', 'casual'],
+          technology: ['technology', 'digital', 'online', 'web']
+        }
+      },
+      vi: {
+        types: {
+          person: ['người', 'con người', 'cá nhân', 'nhóm', 'đội ngũ'],
+          object: ['vật', 'đồ vật', 'sản phẩm', 'công cụ', 'thiết bị'],
+          nature: ['thiên nhiên', 'phong cảnh', 'cảnh quan', 'môi trường'],
+          building: ['tòa nhà', 'kiến trúc', 'công trình', 'cơ sở'],
+          food: ['thức ăn', 'món ăn', 'ẩm thực', 'đặc sản'],
+          technology: ['công nghệ', 'thiết bị', 'máy móc', 'kỹ thuật'],
+          art: ['nghệ thuật', 'tác phẩm', 'thiết kế', 'sáng tạo'],
+          vehicle: ['phương tiện', 'xe cộ', 'giao thông']
+        },
+        emotions: {
+          positive: ['tươi sáng', 'vui vẻ', 'đẹp đẽ', 'tuyệt vời', 'hấp dẫn'],
+          neutral: ['đơn giản', 'sạch sẽ', 'ngăn nắp', 'chuyên nghiệp'],
+          dynamic: ['sôi động', 'năng động', 'mạnh mẽ', 'đầy năng lượng']
+        },
+        actions: {
+          showing: ['đang hiển thị', 'đang trình bày', 'đang thể hiện'],
+          working: ['đang làm việc', 'đang hoạt động', 'đang thực hiện'],
+          enjoying: ['đang thưởng thức', 'đang tận hưởng', 'đang trải nghiệm'],
+          creating: ['đang tạo ra', 'đang phát triển', 'đang xây dựng']
+        },
+        contexts: {
+          business: ['kinh doanh', 'doanh nghiệp', 'công ty', 'nơi làm việc'],
+          education: ['giáo dục', 'học tập', 'đào tạo', 'học thuật'],
+          lifestyle: ['lối sống', 'cuộc sống', 'cá nhân', 'thường ngày'],
+          technology: ['công nghệ', 'số hóa', 'trực tuyến', 'web']
+        }
+      }
+    };
+  }
+
+  generateDiverseAltText(imgTag, htmlContent, analysis) {
+    const strategies = [
+      () => this.generateContextualAlt(analysis),
+      () => this.generateSemanticAlt(analysis),
+      () => this.generateEmotionalAlt(analysis),
+      () => this.generateActionBasedAlt(analysis),
+      () => this.generateBrandAwareAlt(analysis),
+      () => this.generateTechnicalAlt(analysis)
+    ];
+
+    const selectedStrategies = this.selectStrategies(strategies, analysis);
+    
+    for (const strategy of selectedStrategies) {
+      const result = strategy();
+      if (result && this.validateAltText(result)) {
+        return this.refineAltText(result, analysis);
+      }
+    }
+
+    return this.generateFallbackAlt(analysis);
+  }
+
+  generateContextualAlt(analysis) {
+    const { context, structural, imageType } = analysis;
+    
+    if (structural.figcaption) {
+      return this.enhanceWithVocabulary(structural.figcaption, imageType);
+    }
+    
+    if (structural.parentLink) {
+      const linkText = this.extractLinkText(structural.parentLink);
+      if (linkText) {
+        return this.createLinkAlt(linkText, imageType);
+      }
+    }
+    
+    const contextElements = this.extractContextElements(context);
+    if (contextElements.nearbyHeading) {
+      return this.createHeadingBasedAlt(contextElements.nearbyHeading, imageType);
+    }
+    
+    if (contextElements.surroundingText) {
+      return this.createTextBasedAlt(contextElements.surroundingText, imageType);
+    }
+    
+    return null;
+  }
+
+  generateSemanticAlt(analysis) {
+    const { src, imageType, context } = analysis;
+    const lang = this.config.language;
+    const vocab = this.vocabulary[lang];
+    
+    const semanticInfo = this.analyzeSemanticContent(src, context);
+    
+    if (!semanticInfo.mainSubject) return null;
+    
+    let altParts = [];
+    
+    const subjectWord = this.selectVocabularyWord(vocab.types[semanticInfo.category] || [], 'random');
+    if (subjectWord) {
+      altParts.push(subjectWord);
+    }
+    
+    if (semanticInfo.description) {
+      altParts.push(semanticInfo.description);
+    }
+    
+    if (semanticInfo.context && this.config.includeBrandContext) {
+      const contextWord = this.selectVocabularyWord(vocab.contexts[semanticInfo.context] || [], 'first');
+      if (contextWord) {
+        altParts.push(`${contextWord}の`);
+      }
+    }
+    
+    return this.combineAltParts(altParts);
+  }
+
+  generateEmotionalAlt(analysis) {
+    if (!this.config.includeEmotions) return null;
+    
+    const { imageType, context } = analysis;
+    const lang = this.config.language;
+    const vocab = this.vocabulary[lang];
+    
+    const emotionalTone = this.analyzeEmotionalTone(context);
+    
+    if (!emotionalTone) return null;
+    
+    const emotionWords = vocab.emotions[emotionalTone] || [];
+    const emotionWord = this.selectVocabularyWord(emotionWords, 'random');
+    
+    if (!emotionWord) return null;
+    
+    const baseAlt = this.generateBasicAlt(analysis);
+    
+    return lang === 'ja' ? 
+      `${emotionWord}${baseAlt}` : 
+      `${emotionWord} ${baseAlt}`;
+  }
+
+  generateActionBasedAlt(analysis) {
+    const { context, imageType } = analysis;
+    const lang = this.config.language;
+    const vocab = this.vocabulary[lang];
+    
+    const detectedAction = this.detectAction(context);
+    
+    if (!detectedAction) return null;
+    
+    const actionWords = vocab.actions[detectedAction] || [];
+    const actionWord = this.selectVocabularyWord(actionWords, 'random');
+    
+    if (!actionWord) return null;
+    
+    const subject = this.detectSubject(context, imageType);
+    
+    return lang === 'ja' ?
+      `${subject}${actionWord}様子` :
+      `${subject} ${actionWord}`;
+  }
+
+  generateBrandAwareAlt(analysis) {
+    if (!this.config.includeBrandContext) return null;
+    
+    const { context, src } = analysis;
+    
+    const brandInfo = this.extractBrandInfo(context, src);
+    
+    if (!brandInfo.name) return null;
+    
+    const baseAlt = this.generateBasicAlt(analysis);
+    
+    return `${brandInfo.name}の${baseAlt}`;
+  }
+
+  generateTechnicalAlt(analysis) {
+    const { imageType, src, context } = analysis;
+    
+    if (imageType !== 'data-visualization' && imageType !== 'complex') {
+      return null;
+    }
+    
+    const technicalInfo = this.extractTechnicalInfo(context, src);
+    
+    if (!technicalInfo.type) return null;
+    
+    let altParts = [technicalInfo.type];
+    
+    if (technicalInfo.data) {
+      altParts.push(technicalInfo.data);
+    }
+    
+    if (technicalInfo.trend) {
+      altParts.push(technicalInfo.trend);
+    }
+    
+    return this.combineAltParts(altParts);
+  }
+
+  selectStrategies(strategies, analysis) {
+    const { creativity } = this.config;
+    const { imageType } = analysis;
+    
+    switch (creativity) {
+      case 'conservative':
+        return strategies.slice(0, 2);
+      case 'creative':
+        return strategies;
+      default:
+        if (imageType === 'decorative') {
+          return strategies.slice(0, 1);
+        } else if (imageType === 'data-visualization') {
+          return [strategies[0], strategies[5]];
+        } else {
+          return strategies.slice(0, 4);
+        }
+    }
+  }
+
+  validateAltText(altText) {
+    if (!altText || typeof altText !== 'string') return false;
+    
+    const trimmed = altText.trim();
+    
+    if (trimmed.length < 2 || trimmed.length > this.config.maxLength) {
+      return false;
+    }
+    
+    const forbiddenWords = ['image', 'picture', 'photo', '画像', '写真'];
+    const hasForbidenWord = forbiddenWords.some(word => 
+      trimmed.toLowerCase().includes(word.toLowerCase())
+    );
+    
+    if (hasForbidenWord) return false;
+    
+    const placeholders = ['[', ']', 'placeholder', 'dummy'];
+    const hasPlaceholder = placeholders.some(placeholder => 
+      trimmed.toLowerCase().includes(placeholder)
+    );
+    
+    return !hasPlaceholder;
+  }
+
+  refineAltText(altText, analysis) {
+    let refined = altText.trim();
+    
+    refined = refined.replace(/[<>]/g, '');
+    refined = refined.replace(/\s+/g, ' ');
+    
+    if (refined.length > this.config.maxLength) {
+      refined = refined.substring(0, this.config.maxLength - 3) + '...';
+    }
+    
+    if (this.config.language === 'en') {
+      refined = refined.charAt(0).toUpperCase() + refined.slice(1);
+    }
+    
+    return refined;
+  }
+
+  // Helper methods
+  extractContextElements(context) {
+    return {
+      nearbyHeading: this.findNearbyHeading(context),
+      surroundingText: this.extractSurroundingText(context),
+      listContext: this.findListContext(context),
+      tableContext: this.findTableContext(context)
+    };
+  }
+
+  analyzeSemanticContent(src, context) {
+    const srcLower = (src || '').toLowerCase();
+    const contextLower = context.toLowerCase();
+    
+    let category = 'object';
+    
+    if (this.containsKeywords(srcLower + ' ' + contextLower, ['person', 'people', 'man', 'woman', '人', '人物'])) {
+      category = 'person';
+    } else if (this.containsKeywords(srcLower + ' ' + contextLower, ['nature', 'landscape', '自然', '風景'])) {
+      category = 'nature';
+    } else if (this.containsKeywords(srcLower + ' ' + contextLower, ['building', 'architecture', '建物', '建築'])) {
+      category = 'building';
+    } else if (this.containsKeywords(srcLower + ' ' + contextLower, ['food', 'restaurant', '食べ物', '料理'])) {
+      category = 'food';
+    } else if (this.containsKeywords(srcLower + ' ' + contextLower, ['tech', 'computer', 'device', '技術', 'コンピューター'])) {
+      category = 'technology';
+    }
+    
+    return {
+      category,
+      mainSubject: this.extractMainSubject(context),
+      description: this.extractDescription(context),
+      context: this.detectContextType(context)
+    };
+  }
+
+  analyzeEmotionalTone(context) {
+    const contextLower = context.toLowerCase();
+    
+    if (this.containsKeywords(contextLower, ['success', 'happy', 'great', 'excellent', '成功', '素晴らしい', '優秀'])) {
+      return 'positive';
+    }
+    
+    if (this.containsKeywords(contextLower, ['action', 'energy', 'dynamic', 'power', 'アクション', 'エネルギー', 'ダイナミック'])) {
+      return 'dynamic';
+    }
+    
+    return 'neutral';
+  }
+
+  detectAction(context) {
+    const contextLower = context.toLowerCase();
+    
+    if (this.containsKeywords(contextLower, ['show', 'display', 'present', '表示', '示す'])) {
+      return 'showing';
+    } else if (this.containsKeywords(contextLower, ['work', 'operate', 'use', '作業', '操作', '使用'])) {
+      return 'working';
+    } else if (this.containsKeywords(contextLower, ['enjoy', 'experience', 'taste', '楽しむ', '体験', '味わう'])) {
+      return 'enjoying';
+    } else if (this.containsKeywords(contextLower, ['create', 'build', 'develop', '作成', '構築', '開発'])) {
+      return 'creating';
+    }
+    
+    return null;
+  }
+
+  detectSubject(context, imageType) {
+    const lang = this.config.language;
+    const vocab = this.vocabulary[lang];
+    
+    const typeVocab = vocab.types[imageType] || vocab.types.object;
+    return this.selectVocabularyWord(typeVocab, 'first') || (lang === 'ja' ? '画像' : 'image');
+  }
+
+  extractBrandInfo(context, src) {
+    const brandPatterns = [
+      /company[^>]*>([^<]+)/i,
+      /brand[^>]*>([^<]+)/i,
+      /<title[^>]*>([^<]+)/i,
+      /alt\s*=\s*["']([^"']*logo[^"']*)["']/i
+    ];
+    
+    for (const pattern of brandPatterns) {
+      const match = context.match(pattern);
+      if (match) {
+        return { name: match[1].trim().replace(/\s*logo\s*/i, '') };
+      }
+    }
+    
+    return { name: null };
+  }
+
+  extractTechnicalInfo(context, src) {
+    const contextLower = context.toLowerCase();
+    const srcLower = (src || '').toLowerCase();
+    
+    let type = null;
+    let data = null;
+    let trend = null;
+    
+    if (this.containsKeywords(srcLower + ' ' + contextLower, ['chart', 'graph', 'グラフ', 'チャート'])) {
+      if (this.containsKeywords(contextLower, ['bar', 'column', '棒'])) {
+        type = this.config.language === 'ja' ? '棒グラフ' : 'Bar chart';
+      } else if (this.containsKeywords(contextLower, ['pie', '円'])) {
+        type = this.config.language === 'ja' ? '円グラフ' : 'Pie chart';
+      } else if (this.containsKeywords(contextLower, ['line', '線'])) {
+        type = this.config.language === 'ja' ? '線グラフ' : 'Line chart';
+      } else {
+        type = this.config.language === 'ja' ? 'グラフ' : 'Chart';
+      }
+    }
+    
+    const numberPattern = /(\d+(?:\.\d+)?)\s*%?/g;
+    const numbers = contextLower.match(numberPattern);
+    if (numbers && numbers.length > 0) {
+      data = numbers.slice(0, 3).join(', ');
+    }
+    
+    if (this.containsKeywords(contextLower, ['increase', 'rise', 'up', '増加', '上昇', '向上'])) {
+      trend = this.config.language === 'ja' ? '増加傾向' : 'increasing trend';
+    } else if (this.containsKeywords(contextLower, ['decrease', 'fall', 'down', '減少', '下降', '低下'])) {
+      trend = this.config.language === 'ja' ? '減少傾向' : 'decreasing trend';
+    }
+    
+    return { type, data, trend };
+  }
+
+  containsKeywords(text, keywords) {
+    return keywords.some(keyword => text.includes(keyword.toLowerCase()));
+  }
+
+  selectVocabularyWord(words, strategy = 'random') {
+    if (!words || words.length === 0) return null;
+    
+    switch (strategy) {
+      case 'first':
+        return words[0];
+      case 'random':
+        return words[Math.floor(Math.random() * words.length)];
+      case 'shortest':
+        return words.reduce((shortest, word) => 
+          word.length < shortest.length ? word : shortest
+        );
+      default:
+        return words[0];
+    }
+  }
+
+  combineAltParts(parts) {
+    const lang = this.config.language;
+    const validParts = parts.filter(part => part && part.trim());
+    
+    if (validParts.length === 0) return null;
+    
+    if (lang === 'ja') {
+      return validParts.join('');
+    } else {
+      return validParts.join(' ');
+    }
+  }
+
+  generateBasicAlt(analysis) {
+    const { imageType, src } = analysis;
+    const lang = this.config.language;
+    const vocab = this.vocabulary[lang];
+    
+    const typeWords = vocab.types[imageType] || vocab.types.object;
+    return this.selectVocabularyWord(typeWords, 'first') || (lang === 'ja' ? '画像' : 'image');
+  }
+
+  generateFallbackAlt(analysis) {
+    const { src } = analysis;
+    const lang = this.config.language;
+    
+    if (src) {
+      const filename = src.split('/').pop().split('.')[0];
+      const cleaned = filename.replace(/[-_]/g, ' ').trim();
+      
+      if (cleaned && cleaned.length > 0) {
+        return lang === 'ja' ? 
+          cleaned.replace(/\b\w/g, l => l.toUpperCase()) :
+          cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      }
+    }
+    
+    return lang === 'ja' ? '画像' : 'Image';
+  }
+
+  enhanceWithVocabulary(text, imageType) {
+    const lang = this.config.language;
+    const vocab = this.vocabulary[lang];
+    
+    const typeWords = vocab.types[imageType];
+    if (typeWords && typeWords.length > 0) {
+      const typeWord = this.selectVocabularyWord(typeWords, 'random');
+      
+      return lang === 'ja' ?
+        `${typeWord}：${text}` :
+        `${typeWord}: ${text}`;
+    }
+    
+    return text;
+  }
+
+  createLinkAlt(linkText, imageType) {
+    const lang = this.config.language;
+    
+    return lang === 'ja' ?
+      `${linkText}へのリンク` :
+      `Link to ${linkText}`;
+  }
+
+  createHeadingBasedAlt(heading, imageType) {
+    const lang = this.config.language;
+    const vocab = this.vocabulary[lang];
+    
+    const typeWords = vocab.types[imageType] || [];
+    const typeWord = this.selectVocabularyWord(typeWords, 'first');
+    
+    if (typeWord) {
+      return lang === 'ja' ?
+        `${heading}の${typeWord}` :
+        `${typeWord} of ${heading}`;
+    }
+    
+    return heading;
+  }
+
+  createTextBasedAlt(text, imageType) {
+    const words = text.split(/\s+/).filter(word => word.length > 2);
+    const keyWords = words.slice(0, 3).join(' ');
+    
+    const lang = this.config.language;
+    const vocab = this.vocabulary[lang];
+    
+    const typeWords = vocab.types[imageType] || [];
+    const typeWord = this.selectVocabularyWord(typeWords, 'first');
+    
+    if (typeWord && keyWords) {
+      return lang === 'ja' ?
+        `${keyWords}の${typeWord}` :
+        `${typeWord} showing ${keyWords}`;
+    }
+    
+    return keyWords || (lang === 'ja' ? '画像' : 'Image');
+  }
+
+  extractMainSubject(context) {
+    const sentences = context.split(/[.!?。！？]/);
+    const firstSentence = sentences[0];
+    
+    if (firstSentence) {
+      const words = firstSentence.split(/\s+/);
+      return words.slice(0, 3).join(' ');
+    }
+    
+    return null;
+  }
+
+  extractDescription(context) {
+    const descriptiveWords = context.match(/\b(beautiful|amazing|professional|modern|elegant|美しい|素晴らしい|プロフェッショナル|モダン|エレガント)\b/gi);
+    
+    return descriptiveWords ? descriptiveWords[0] : null;
+  }
+
+  detectContextType(context) {
+    const contextLower = context.toLowerCase();
+    
+    if (this.containsKeywords(contextLower, ['business', 'company', 'corporate', 'ビジネス', '企業', '会社'])) {
+      return 'business';
+    } else if (this.containsKeywords(contextLower, ['education', 'learning', 'school', '教育', '学習', '学校'])) {
+      return 'education';
+    } else if (this.containsKeywords(contextLower, ['technology', 'tech', 'digital', '技術', 'テクノロジー', 'デジタル'])) {
+      return 'technology';
+    } else if (this.containsKeywords(contextLower, ['lifestyle', 'personal', 'daily', 'ライフスタイル', '個人', '日常'])) {
+      return 'lifestyle';
+    }
+    
+    return null;
+  }
+
+  findNearbyHeading(context) {
+    const headingRegex = /<h[1-6][^>]*>([^<]+)<\/h[1-6]>/gi;
+    const match = headingRegex.exec(context);
+    return match ? match[1].trim() : null;
+  }
+
+  extractSurroundingText(context) {
+    const textOnly = context.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const words = textOnly.split(' ');
+    
+    const meaningfulWords = words.filter(word => 
+      word.length > 2 && !/^\d+$/.test(word) && !/^[^\w]+$/.test(word)
+    ).slice(0, 8);
+    
+    return meaningfulWords.join(' ');
+  }
+
+  findListContext(context) {
+    const listItemRegex = /<li[^>]*>([^<]+)<\/li>/gi;
+    const match = listItemRegex.exec(context);
+    return match ? match[1].trim() : null;
+  }
+
+  findTableContext(context) {
+    const tableCellRegex = /<t[hd][^>]*>([^<]+)<\/t[hd]>/gi;
+    const match = tableCellRegex.exec(context);
+    return match ? match[1].trim() : null;
+  }
+
+  extractLinkText(linkTag) {
+    const textMatch = linkTag.match(/>([^<]+)</);
+    return textMatch ? textMatch[1].trim() : null;
+  }
+}
+
+/**
+ * Enhanced Alt Attribute Checker
+ * Cải tiến tính năng kiểm tra alt attribute đa dạng và toàn diện hơn
+ */
+class EnhancedAltChecker {
+  constructor(config = {}) {
+    this.config = {
+      language: config.language || 'ja',
+      strictMode: config.strictMode || false,
+      checkDecorative: config.checkDecorative || true,
+      checkInformative: config.checkInformative || true,
+      checkComplex: config.checkComplex || true,
+      maxAltLength: config.maxAltLength || 125,
+      minAltLength: config.minAltLength || 3,
+      ...config
+    };
+  }
+
+  analyzeAltAttributes(content) {
+    const issues = [];
+    const imgRegex = /<img[^>]*>/gi;
+    const imgTags = content.match(imgRegex) || [];
+    
+    imgTags.forEach((imgTag, index) => {
+      const analysis = this.analyzeImageContext(imgTag, content, index);
+      const altIssues = this.checkAltQuality(imgTag, analysis);
+      
+      if (altIssues.length > 0) {
+        issues.push({
+          imageIndex: index + 1,
+          imgTag: imgTag,
+          src: analysis.src,
+          context: analysis.context,
+          issues: altIssues,
+          recommendations: this.generateRecommendations(imgTag, analysis)
+        });
+      }
+    });
+    
+    return issues;
+  }
+
+  analyzeImageContext(imgTag, htmlContent, imgIndex) {
+    const src = this.extractAttribute(imgTag, 'src');
+    const alt = this.extractAttribute(imgTag, 'alt');
+    const title = this.extractAttribute(imgTag, 'title');
+    const ariaLabel = this.extractAttribute(imgTag, 'aria-label');
+    const role = this.extractAttribute(imgTag, 'role');
+    
+    const position = this.findImagePosition(imgTag, htmlContent, imgIndex);
+    const surroundingContext = this.extractSurroundingContext(htmlContent, position, 1000);
+    
+    const imageType = this.classifyImageType(imgTag, surroundingContext, src);
+    
+    const structuralContext = this.analyzeStructuralContext(surroundingContext, imgTag);
+    
+    return {
+      src,
+      alt,
+      title,
+      ariaLabel,
+      role,
+      imageType,
+      context: surroundingContext,
+      structural: structuralContext,
+      position
+    };
+  }
+
+  checkAltQuality(imgTag, analysis) {
+    const issues = [];
+    const { alt, imageType, src } = analysis;
+    
+    if (!this.hasAttribute(imgTag, 'alt')) {
+      issues.push({
+        type: 'MISSING_ALT',
+        severity: 'ERROR',
+        message: 'Thiếu thuộc tính alt',
+        description: 'Tất cả hình ảnh phải có thuộc tính alt'
+      });
+      return issues;
+    }
+
+    if (alt === '') {
+      if (imageType === 'decorative') {
+        return issues;
+      } else {
+        issues.push({
+          type: 'EMPTY_ALT',
+          severity: 'ERROR',
+          message: 'Alt text rỗng cho hình ảnh có nội dung',
+          description: 'Hình ảnh có nội dung cần alt text mô tả'
+        });
+      }
+    }
+
+    if (alt && alt.length > this.config.maxAltLength) {
+      issues.push({
+        type: 'ALT_TOO_LONG',
+        severity: 'WARNING',
+        message: `Alt text quá dài (${alt.length} ký tự)`,
+        description: `Nên giới hạn dưới ${this.config.maxAltLength} ký tự`
+      });
+    }
+
+    if (alt && alt.length < this.config.minAltLength && imageType !== 'decorative') {
+      issues.push({
+        type: 'ALT_TOO_SHORT',
+        severity: 'WARNING',
+        message: `Alt text quá ngắn (${alt.length} ký tự)`,
+        description: 'Alt text nên mô tả đầy đủ nội dung hình ảnh'
+      });
+    }
+
+    const contentIssues = this.checkAltContent(alt, src, imageType);
+    issues.push(...contentIssues);
+
+    const consistencyIssues = this.checkAttributeConsistency(analysis);
+    issues.push(...consistencyIssues);
+
+    const typeSpecificIssues = this.checkTypeSpecificRequirements(analysis);
+    issues.push(...typeSpecificIssues);
+
+    return issues;
+  }
+
+  classifyImageType(imgTag, context, src) {
+    const srcLower = (src || '').toLowerCase();
+    const contextLower = context.toLowerCase();
+    
+    if (this.isDecorativeImage(imgTag, context, src)) {
+      return 'decorative';
+    }
+    
+    if (this.isDataVisualization(srcLower, contextLower)) {
+      return 'data-visualization';
+    }
+    
+    if (this.isComplexImage(srcLower, contextLower)) {
+      return 'complex';
+    }
+    
+    if (this.isLogo(srcLower, contextLower)) {
+      return 'logo';
+    }
+    
+    if (this.isFunctionalIcon(imgTag, context, srcLower)) {
+      return 'functional-icon';
+    }
+    
+    if (this.isContentImage(contextLower)) {
+      return 'content';
+    }
+    
+    return 'informative';
+  }
+
+  checkAltContent(alt, src, imageType) {
+    const issues = [];
+    
+    if (!alt) return issues;
+    
+    const altLower = alt.toLowerCase();
+    const srcLower = (src || '').toLowerCase();
+    
+    const forbiddenWords = [
+      'image', 'picture', 'photo', 'graphic', 'img',
+      '画像', '写真', 'イメージ', '図', '図表'
+    ];
+    
+    const foundForbidden = forbiddenWords.find(word => altLower.includes(word));
+    if (foundForbidden) {
+      issues.push({
+        type: 'REDUNDANT_WORDS',
+        severity: 'WARNING',
+        message: `Alt text chứa từ thừa: "${foundForbidden}"`,
+        description: 'Không cần nói "hình ảnh" trong alt text'
+      });
+    }
+    
+    if (src) {
+      const filename = src.split('/').pop().split('.')[0];
+      if (altLower.includes(filename.toLowerCase())) {
+        issues.push({
+          type: 'FILENAME_IN_ALT',
+          severity: 'WARNING',
+          message: 'Alt text chứa tên file',
+          description: 'Nên mô tả nội dung thay vì tên file'
+        });
+      }
+    }
+    
+    const genericTexts = [
+      'click here', 'read more', 'learn more', 'see more',
+      'ここをクリック', '詳細', 'もっと見る'
+    ];
+    
+    const foundGeneric = genericTexts.find(text => altLower.includes(text));
+    if (foundGeneric) {
+      issues.push({
+        type: 'GENERIC_ALT',
+        severity: 'ERROR',
+        message: `Alt text quá chung chung: "${foundGeneric}"`,
+        description: 'Nên mô tả cụ thể nội dung hình ảnh'
+      });
+    }
+    
+    if (imageType === 'data-visualization' && !this.hasDataDescription(alt)) {
+      issues.push({
+        type: 'MISSING_DATA_DESCRIPTION',
+        severity: 'ERROR',
+        message: 'Biểu đồ thiếu mô tả dữ liệu',
+        description: 'Biểu đồ cần mô tả xu hướng và dữ liệu chính'
+      });
+    }
+    
+    return issues;
+  }
+
+  generateRecommendations(imgTag, analysis) {
+    const recommendations = [];
+    const { imageType, context, src, alt } = analysis;
+    
+    switch (imageType) {
+      case 'decorative':
+        recommendations.push({
+          type: 'DECORATIVE',
+          suggestion: 'alt=""',
+          reason: 'Hình trang trí nên có alt rỗng'
+        });
+        break;
+        
+      case 'logo':
+        const brandName = this.extractBrandName(context, src);
+        recommendations.push({
+          type: 'LOGO',
+          suggestion: brandName ? `alt="${brandName} logo"` : 'alt="Company logo"',
+          reason: 'Logo nên bao gồm tên thương hiệu'
+        });
+        break;
+        
+      case 'functional-icon':
+        const action = this.extractIconAction(context, imgTag);
+        recommendations.push({
+          type: 'FUNCTIONAL',
+          suggestion: action ? `alt="${action}"` : 'alt="[Mô tả chức năng]"',
+          reason: 'Icon chức năng nên mô tả hành động'
+        });
+        break;
+        
+      case 'data-visualization':
+        recommendations.push({
+          type: 'DATA_VIZ',
+          suggestion: 'alt="[Loại biểu đồ]: [Xu hướng chính] [Dữ liệu quan trọng]"',
+          reason: 'Biểu đồ cần mô tả loại, xu hướng và dữ liệu chính'
+        });
+        break;
+        
+      case 'complex':
+        recommendations.push({
+          type: 'COMPLEX',
+          suggestion: 'alt="[Mô tả ngắn]" + longdesc hoặc mô tả chi tiết bên dưới',
+          reason: 'Hình phức tạp cần mô tả ngắn trong alt và mô tả dài riêng'
+        });
+        break;
+        
+      default:
+        const contextualAlt = this.generateContextualAlt(analysis);
+        recommendations.push({
+          type: 'CONTEXTUAL',
+          suggestion: `alt="${contextualAlt}"`,
+          reason: 'Mô tả dựa trên ngữ cảnh xung quanh'
+        });
+    }
+    
+    return recommendations;
+  }
+
+  generateContextualAlt(analysis) {
+    const { context, src, structural } = analysis;
+    
+    const nearbyHeading = this.findNearbyHeading(context);
+    if (nearbyHeading) {
+      return nearbyHeading;
+    }
+    
+    if (structural.parentLink) {
+      const linkText = this.extractLinkText(structural.parentLink);
+      if (linkText) {
+        return linkText;
+      }
+    }
+    
+    if (structural.figcaption) {
+      return structural.figcaption;
+    }
+    
+    const surroundingText = this.extractSurroundingText(context);
+    if (surroundingText) {
+      return surroundingText;
+    }
+    
+    return this.generateFallbackAlt(src);
+  }
+
+  // Helper methods
+  isDecorativeImage(imgTag, context, src) {
+    const decorativeIndicators = [
+      'decoration', 'border', 'spacer', 'divider',
+      'background', 'texture', 'pattern'
+    ];
+    
+    const srcLower = (src || '').toLowerCase();
+    return decorativeIndicators.some(indicator => srcLower.includes(indicator));
+  }
+
+  isDataVisualization(src, context) {
+    const dataIndicators = [
+      'chart', 'graph', 'plot', 'diagram', 'infographic',
+      'グラフ', '図表', 'チャート'
+    ];
+    
+    return dataIndicators.some(indicator => 
+      src.includes(indicator) || context.includes(indicator)
+    );
+  }
+
+  isComplexImage(src, context) {
+    const complexIndicators = [
+      'flowchart', 'timeline', 'map', 'blueprint', 'schematic',
+      'フローチャート', '地図', '設計図'
+    ];
+    
+    return complexIndicators.some(indicator => 
+      src.includes(indicator) || context.includes(indicator)
+    );
+  }
+
+  isLogo(src, context) {
+    const logoIndicators = ['logo', 'brand', 'ロゴ', 'ブランド'];
+    return logoIndicators.some(indicator => 
+      src.includes(indicator) || context.includes(indicator)
+    );
+  }
+
+  isFunctionalIcon(imgTag, context, src) {
+    const iconIndicators = ['icon', 'btn', 'button', 'アイコン', 'ボタン'];
+    const hasClickHandler = /onclick|href/i.test(context);
+    
+    return (iconIndicators.some(indicator => src.includes(indicator)) || hasClickHandler);
+  }
+
+  isContentImage(context) {
+    const contentIndicators = [
+      'article', 'content', 'story', 'news',
+      '記事', 'コンテンツ', 'ニュース'
+    ];
+    
+    return contentIndicators.some(indicator => context.includes(indicator));
+  }
+
+  extractAttribute(imgTag, attributeName) {
+    const regex = new RegExp(`${attributeName}\\s*=\\s*["']([^"']*)["']`, 'i');
+    const match = imgTag.match(regex);
+    return match ? match[1] : null;
+  }
+
+  hasAttribute(imgTag, attributeName) {
+    const regex = new RegExp(`${attributeName}\\s*=`, 'i');
+    return regex.test(imgTag);
+  }
+
+  findImagePosition(imgTag, htmlContent, imgIndex) {
+    const imgRegex = /<img[^>]*>/gi;
+    let match;
+    let currentIndex = 0;
+    
+    while ((match = imgRegex.exec(htmlContent)) !== null) {
+      if (currentIndex === imgIndex) {
+        return match.index;
+      }
+      currentIndex++;
+    }
+    
+    return -1;
+  }
+
+  extractSurroundingContext(htmlContent, position, range) {
+    if (position === -1) return '';
+    
+    const start = Math.max(0, position - range);
+    const end = Math.min(htmlContent.length, position + range);
+    
+    return htmlContent.substring(start, end);
+  }
+
+  analyzeStructuralContext(context, imgTag) {
+    return {
+      parentLink: this.findParentElement(context, imgTag, 'a'),
+      parentFigure: this.findParentElement(context, imgTag, 'figure'),
+      figcaption: this.findSiblingElement(context, imgTag, 'figcaption'),
+      parentButton: this.findParentElement(context, imgTag, 'button')
+    };
+  }
+
+  findParentElement(context, imgTag, tagName) {
+    const imgIndex = context.indexOf(imgTag);
+    if (imgIndex === -1) return null;
+    
+    const beforeImg = context.substring(0, imgIndex);
+    const openTagRegex = new RegExp(`<${tagName}[^>]*>`, 'gi');
+    const closeTagRegex = new RegExp(`</${tagName}>`, 'gi');
+    
+    let openTags = 0;
+    let lastOpenMatch = null;
+    
+    let match;
+    while ((match = openTagRegex.exec(beforeImg)) !== null) {
+      lastOpenMatch = match;
+      openTags++;
+    }
+    
+    while ((match = closeTagRegex.exec(beforeImg)) !== null) {
+      openTags--;
+    }
+    
+    return openTags > 0 ? lastOpenMatch[0] : null;
+  }
+
+  findSiblingElement(context, imgTag, tagName) {
+    const imgIndex = context.indexOf(imgTag);
+    if (imgIndex === -1) return null;
+    
+    const afterImg = context.substring(imgIndex + imgTag.length);
+    const siblingRegex = new RegExp(`<${tagName}[^>]*>([^<]*)</${tagName}>`, 'i');
+    const match = afterImg.match(siblingRegex);
+    
+    return match ? match[1].trim() : null;
+  }
+
+  checkAttributeConsistency(analysis) {
+    const issues = [];
+    const { alt, title, ariaLabel } = analysis;
+    
+    if (alt && ariaLabel && alt !== ariaLabel) {
+      issues.push({
+        type: 'INCONSISTENT_LABELS',
+        severity: 'WARNING',
+        message: 'Alt text và aria-label không nhất quán',
+        description: 'Alt và aria-label nên có nội dung giống nhau'
+      });
+    }
+    
+    if (title && alt && title === alt) {
+      issues.push({
+        type: 'REDUNDANT_TITLE',
+        severity: 'INFO',
+        message: 'Title attribute trùng với alt text',
+        description: 'Title có thể bỏ đi để tránh lặp lại'
+      });
+    }
+    
+    return issues;
+  }
+
+  checkTypeSpecificRequirements(analysis) {
+    const issues = [];
+    const { imageType, alt, structural } = analysis;
+    
+    switch (imageType) {
+      case 'functional-icon':
+        if (structural.parentLink && !alt) {
+          issues.push({
+            type: 'FUNCTIONAL_MISSING_ALT',
+            severity: 'ERROR',
+            message: 'Icon chức năng trong link thiếu alt text',
+            description: 'Icon có chức năng phải có alt mô tả hành động'
+          });
+        }
+        break;
+        
+      case 'logo':
+        if (alt && !alt.toLowerCase().includes('logo')) {
+          issues.push({
+            type: 'LOGO_MISSING_CONTEXT',
+            severity: 'WARNING',
+            message: 'Logo thiếu từ khóa "logo" trong alt text',
+            description: 'Logo nên bao gồm từ "logo" để rõ ràng'
+          });
+        }
+        break;
+    }
+    
+    return issues;
+  }
+
+  hasDataDescription(alt) {
+    const dataKeywords = [
+      'increase', 'decrease', 'trend', 'percent', '%',
+      '増加', '減少', 'トレンド', 'パーセント'
+    ];
+    
+    return dataKeywords.some(keyword => 
+      alt.toLowerCase().includes(keyword.toLowerCase())
+    );
+  }
+
+  findNearbyHeading(context) {
+    const headingRegex = /<h[1-6][^>]*>([^<]+)<\/h[1-6]>/gi;
+    const match = headingRegex.exec(context);
+    return match ? match[1].trim() : null;
+  }
+
+  extractLinkText(linkTag) {
+    const textMatch = linkTag.match(/>([^<]+)</);
+    return textMatch ? textMatch[1].trim() : null;
+  }
+
+  extractSurroundingText(context) {
+    const textOnly = context.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const words = textOnly.split(' ');
+    
+    const meaningfulWords = words.filter(word => 
+      word.length > 2 && !/^\d+$/.test(word)
+    ).slice(0, 5);
+    
+    return meaningfulWords.join(' ');
+  }
+
+  generateFallbackAlt(src) {
+    if (!src) return '画像';
+    
+    const filename = src.split('/').pop().split('.')[0];
+    
+    return filename
+      .replace(/[-_]/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase())
+      .trim() || '画像';
+  }
+
+  extractBrandName(context, src) {
+    const brandPatterns = [
+      /company[^>]*>([^<]+)/i,
+      /brand[^>]*>([^<]+)/i,
+      /logo[^>]*>([^<]+)/i
+    ];
+    
+    for (const pattern of brandPatterns) {
+      const match = context.match(pattern);
+      if (match) return match[1].trim();
+    }
+    
+    return null;
+  }
+
+  extractIconAction(context, imgTag) {
+    const actionPatterns = [
+      /title\s*=\s*["']([^"']+)["']/i,
+      /aria-label\s*=\s*["']([^"']+)["']/i,
+      /onclick[^>]*>([^<]+)/i
+    ];
+    
+    for (const pattern of actionPatterns) {
+      const match = imgTag.match(pattern) || context.match(pattern);
+      if (match) return match[1].trim();
+    }
+    
+    return null;
+  }
+}
 
 class AccessibilityFixer {
   constructor(config = {}) {
@@ -1017,7 +2234,8 @@ class AccessibilityFixer {
       buttons: [],
       links: [],
       landmarks: [],
-      headings: [] // Analysis only
+      headings: [], // Analysis only
+      brokenLinks: [] // Analysis only
     };
     
     try {
@@ -1053,8 +2271,12 @@ class AccessibilityFixer {
       console.log(chalk.yellow('\n📑 Step 8: Heading analysis...'));
       results.headings = await this.analyzeHeadings(directory);
       
-      // Step 9: Cleanup duplicate roles
-      console.log(chalk.yellow('\n🧹 Step 9: Cleanup duplicate roles...'));
+      // Step 9: Check broken links (no auto-fix)
+      console.log(chalk.yellow('\n🔗 Step 9: Broken links check...'));
+      results.brokenLinks = await this.checkBrokenLinks(directory);
+      
+      // Step 10: Cleanup duplicate roles
+      console.log(chalk.yellow('\n🧹 Step 10: Cleanup duplicate roles...'));
       results.cleanup = await this.cleanupDuplicateRoles(directory);
       
       // Summary
@@ -1639,6 +2861,215 @@ class AccessibilityFixer {
     });
     
     return fixed;
+  }
+
+  // Check for broken links and 404 resources
+  async checkBrokenLinks(directory = '.') {
+    console.log(chalk.blue('🔗 Checking for broken links and 404 resources...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = await this.analyzeBrokenLinks(content, file);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            if (issue.suggestion) {
+              console.log(chalk.gray(`    💡 ${issue.suggestion}`));
+            }
+          });
+        }
+        
+        results.push({ file, status: 'analyzed', issues: issues.length, brokenLinks: issues });
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Analyzed links in ${results.length} files`));
+    console.log(chalk.gray('💡 Broken link issues require manual review and cannot be auto-fixed'));
+    return results;
+  }
+
+  async analyzeBrokenLinks(content, filePath) {
+    const issues = [];
+    const path = require('path');
+    const http = require('http');
+    const https = require('https');
+    const { URL } = require('url');
+    
+    // Extract all links and resources
+    const linkPatterns = [
+      // Anchor links
+      { pattern: /<a[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Link', element: 'a' },
+      // Images
+      { pattern: /<img[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Image', element: 'img' },
+      // CSS links
+      { pattern: /<link[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'CSS', element: 'link' },
+      // Script sources
+      { pattern: /<script[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Script', element: 'script' },
+      // Video sources
+      { pattern: /<video[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Video', element: 'video' },
+      // Audio sources
+      { pattern: /<audio[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Audio', element: 'audio' }
+    ];
+    
+    const baseDir = path.dirname(filePath);
+    
+    for (const linkPattern of linkPatterns) {
+      let match;
+      while ((match = linkPattern.pattern.exec(content)) !== null) {
+        const url = match[1];
+        const issue = await this.checkSingleLink(url, baseDir, linkPattern.type, linkPattern.element);
+        if (issue) {
+          issues.push(issue);
+        }
+      }
+    }
+    
+    return issues;
+  }
+
+  async checkSingleLink(url, baseDir, resourceType, elementType) {
+    // Skip certain URLs
+    if (this.shouldSkipUrl(url)) {
+      return null;
+    }
+    
+    try {
+      if (this.isExternalUrl(url)) {
+        // Check external URLs
+        return await this.checkExternalUrl(url, resourceType, elementType);
+      } else {
+        // Check local files
+        return await this.checkLocalFile(url, baseDir, resourceType, elementType);
+      }
+    } catch (error) {
+      return {
+        type: `🔗 ${resourceType} check error`,
+        description: `Failed to check ${elementType}: ${url}`,
+        suggestion: `Verify the ${resourceType.toLowerCase()} manually: ${error.message}`,
+        url: url,
+        resourceType: resourceType
+      };
+    }
+  }
+
+  shouldSkipUrl(url) {
+    const skipPatterns = [
+      /^#/,                    // Anchor links
+      /^mailto:/,              // Email links
+      /^tel:/,                 // Phone links
+      /^javascript:/,          // JavaScript links
+      /^data:/,                // Data URLs
+      /^\{\{.*\}\}$/,         // Template variables
+      /^\$\{.*\}$/,           // Template literals
+      /^<%.*%>$/,             // Template tags
+      /^\/\/$/,               // Protocol-relative empty
+      /^https?:\/\/localhost/, // Localhost URLs
+      /^https?:\/\/127\.0\.0\.1/, // Local IP
+      /^https?:\/\/0\.0\.0\.0/    // All interfaces IP
+    ];
+    
+    return skipPatterns.some(pattern => pattern.test(url));
+  }
+
+  isExternalUrl(url) {
+    return /^https?:\/\//.test(url);
+  }
+
+  async checkExternalUrl(url, resourceType, elementType) {
+    return new Promise((resolve) => {
+      const http = require('http');
+      const https = require('https');
+      const { URL } = require('url');
+      
+      const urlObj = new URL(url);
+      const client = urlObj.protocol === 'https:' ? https : http;
+      
+      const timeout = 5000; // 5 second timeout
+      const req = client.request({
+        hostname: urlObj.hostname,
+        port: urlObj.port,
+        path: urlObj.pathname + urlObj.search,
+        method: 'HEAD',
+        timeout: timeout,
+        headers: {
+          'User-Agent': 'GBU-Accessibility-Checker/3.1.0'
+        }
+      }, (res) => {
+        if (res.statusCode >= 400) {
+          resolve({
+            type: `🔗 ${resourceType} ${res.statusCode}`,
+            description: `${elementType} returns ${res.statusCode}: ${url}`,
+            suggestion: `Update or remove the broken ${resourceType.toLowerCase()} reference`,
+            url: url,
+            statusCode: res.statusCode,
+            resourceType: resourceType
+          });
+        } else {
+          resolve(null); // No issue
+        }
+      });
+      
+      req.on('error', (error) => {
+        resolve({
+          type: `🔗 ${resourceType} unreachable`,
+          description: `${elementType} cannot be reached: ${url}`,
+          suggestion: `Check network connection or update the ${resourceType.toLowerCase()} URL`,
+          url: url,
+          error: error.message,
+          resourceType: resourceType
+        });
+      });
+      
+      req.on('timeout', () => {
+        req.destroy();
+        resolve({
+          type: `🔗 ${resourceType} timeout`,
+          description: `${elementType} request timed out: ${url}`,
+          suggestion: `The ${resourceType.toLowerCase()} server may be slow or unreachable`,
+          url: url,
+          resourceType: resourceType
+        });
+      });
+      
+      req.end();
+    });
+  }
+
+  async checkLocalFile(url, baseDir, resourceType, elementType) {
+    const path = require('path');
+    
+    // Handle relative URLs
+    let filePath;
+    if (url.startsWith('/')) {
+      // Absolute path from web root - we'll check relative to baseDir
+      filePath = path.join(baseDir, url.substring(1));
+    } else {
+      // Relative path
+      filePath = path.resolve(baseDir, url);
+    }
+    
+    try {
+      await require('fs').promises.access(filePath);
+      return null; // File exists, no issue
+    } catch (error) {
+      return {
+        type: `📁 ${resourceType} not found`,
+        description: `${elementType} file does not exist: ${url}`,
+        suggestion: `Create the missing file or update the ${resourceType.toLowerCase()} path`,
+        url: url,
+        filePath: filePath,
+        resourceType: resourceType
+      };
+    }
   }
 
   // Analyze headings (no auto-fix, only suggestions)
