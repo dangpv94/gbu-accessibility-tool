@@ -15,6 +15,22 @@ npm install gbu-accessibility-package
 gbu-a11y
 ```
 
+## 🔄 Cài đặt lại / Cập nhật
+
+```bash
+# Gỡ cài đặt cũ
+npm uninstall -g gbu-accessibility-package
+
+# Xóa cache
+npm cache clean --force
+
+# Cài đặt phiên bản mới nhất
+npm install -g gbu-accessibility-package@latest
+
+# Kiểm tra version
+gbu-a11y --version
+```
+
 ## 🎯 Sử dụng cơ bản
 
 ### Cách 1: CLI (Đơn giản nhất)
@@ -115,7 +131,29 @@ gbu-a11y --dry-run
 
 **Lỗi "Cannot find module"**
 ```bash
+# Cài đặt lại
+npm uninstall -g gbu-accessibility-package
+npm cache clean --force
 npm install -g gbu-accessibility-package
+```
+
+**Lỗi permission (macOS/Linux)**
+```bash
+sudo npm install -g gbu-accessibility-package
+```
+
+**Package không update**
+```bash
+# Force update
+npm cache clean --force
+npm install -g gbu-accessibility-package@latest --force
+```
+
+**Kiểm tra cài đặt**
+```bash
+which gbu-a11y
+npm list -g gbu-accessibility-package
+gbu-a11y --version
 ```
 
 **Duplicate attributes**

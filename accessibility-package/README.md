@@ -49,6 +49,47 @@ npm install -g gbu-accessibility-package
 npm install gbu-accessibility-package
 ```
 
+### Uninstall and Reinstall
+
+```bash
+# Uninstall global package
+npm uninstall -g gbu-accessibility-package
+
+# Uninstall local package
+npm uninstall gbu-accessibility-package
+
+# Clear npm cache (recommended when having issues)
+npm cache clean --force
+
+# Reinstall latest version
+npm install -g gbu-accessibility-package@latest
+
+# Check installed version
+npm list -g gbu-accessibility-package
+gbu-a11y --version
+
+# Install specific version
+npm install -g gbu-accessibility-package@3.2.1
+```
+
+### Installation Troubleshooting
+
+```bash
+# If permission errors (macOS/Linux)
+sudo npm install -g gbu-accessibility-package
+
+# If cache issues
+npm cache clean --force
+npm install -g gbu-accessibility-package --force
+
+# Verify installation
+which gbu-a11y
+gbu-a11y --help
+
+# Update to latest version
+npm update -g gbu-accessibility-package
+```
+
 ### Basic Usage
 
 ```bash
@@ -265,6 +306,47 @@ console.log('Accessibility fixes completed with enhanced features:', results);
 - **Missing resources** → Check for missing local files
 - **Invalid URLs** → Detect malformed URL formats
 - **Slow links** → Warn about timeouts and slow responses
+
+## 🔧 Package Management
+
+### Check package information
+```bash
+# Check current version
+gbu-a11y --version
+npm list -g gbu-accessibility-package
+
+# View package info
+npm info gbu-accessibility-package
+
+# Verify installation
+which gbu-a11y
+npm list -g | grep gbu-accessibility-package
+```
+
+### Update package
+```bash
+# Check for new versions
+npm outdated -g gbu-accessibility-package
+
+# Update to latest version
+npm update -g gbu-accessibility-package
+
+# Or reinstall latest version
+npm uninstall -g gbu-accessibility-package
+npm install -g gbu-accessibility-package@latest
+```
+
+### Cache management
+```bash
+# Verify cache
+npm cache verify
+
+# Clean cache (when having issues)
+npm cache clean --force
+
+# View cache location
+npm config get cache
+```
 
 ## 🧪 Testing and Demo
 

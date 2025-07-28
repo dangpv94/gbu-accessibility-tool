@@ -52,6 +52,47 @@ npm install -g gbu-accessibility-package
 npm install gbu-accessibility-package
 ```
 
+### Gỡ cài đặt và Cài đặt lại
+
+```bash
+# Gỡ cài đặt package global
+npm uninstall -g gbu-accessibility-package
+
+# Gỡ cài đặt package local
+npm uninstall gbu-accessibility-package
+
+# Xóa cache npm (khuyến nghị khi có vấn đề)
+npm cache clean --force
+
+# Cài đặt lại phiên bản mới nhất
+npm install -g gbu-accessibility-package@latest
+
+# Kiểm tra phiên bản đã cài đặt
+npm list -g gbu-accessibility-package
+gbu-a11y --version
+
+# Cài đặt phiên bản cụ thể
+npm install -g gbu-accessibility-package@3.2.1
+```
+
+### Khắc phục sự cố cài đặt
+
+```bash
+# Nếu gặp lỗi permission (macOS/Linux)
+sudo npm install -g gbu-accessibility-package
+
+# Nếu gặp lỗi cache
+npm cache clean --force
+npm install -g gbu-accessibility-package --force
+
+# Kiểm tra cài đặt
+which gbu-a11y
+gbu-a11y --help
+
+# Cập nhật lên phiên bản mới nhất
+npm update -g gbu-accessibility-package
+```
+
 ### Sử dụng cơ bản
 
 ```bash
@@ -276,6 +317,47 @@ console.log("Hoàn thành sửa lỗi với enhanced features:", results);
 - **Tài nguyên không tồn tại** → Kiểm tra file local thiếu
 - **URL không hợp lệ** → Phát hiện định dạng URL sai
 - **Liên kết chậm** → Cảnh báo timeout và phản hồi chậm
+
+## 🔧 Quản lý Package
+
+### Kiểm tra thông tin package
+```bash
+# Xem version hiện tại
+gbu-a11y --version
+npm list -g gbu-accessibility-package
+
+# Xem thông tin package
+npm info gbu-accessibility-package
+
+# Kiểm tra package đã cài đặt
+which gbu-a11y
+npm list -g | grep gbu-accessibility-package
+```
+
+### Cập nhật package
+```bash
+# Kiểm tra version mới
+npm outdated -g gbu-accessibility-package
+
+# Cập nhật lên version mới nhất
+npm update -g gbu-accessibility-package
+
+# Hoặc cài đặt lại version mới
+npm uninstall -g gbu-accessibility-package
+npm install -g gbu-accessibility-package@latest
+```
+
+### Quản lý cache
+```bash
+# Xem cache info
+npm cache verify
+
+# Xóa cache (khi có vấn đề)
+npm cache clean --force
+
+# Xem cache location
+npm config get cache
+```
 
 ## 🧪 Kiểm tra và Demo
 
