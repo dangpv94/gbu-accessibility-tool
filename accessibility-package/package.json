@@ -1,6 +1,6 @@
 {
   "name": "gbu-accessibility-package",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Comprehensive accessibility fixes for HTML files. Smart context-aware alt text generation, form labels, button names, link names, landmarks, heading analysis, and WCAG-compliant role attributes. Covers major axe DevTools issues with individual fix modes.",
   "main": "index.js",
   "bin": {
