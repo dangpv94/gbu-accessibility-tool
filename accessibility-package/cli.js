@@ -23,6 +23,7 @@ const options = {
   langOnly: false,
   roleOnly: false,
   formsOnly: false,
+  nestedOnly: false,
   buttonsOnly: false,
   linksOnly: false,
   landmarksOnly: false,
@@ -79,6 +80,9 @@ for (let i = 0; i < args.length; i++) {
       break;
     case '--forms-only':
       options.formsOnly = true;
+      break;
+    case '--nested-only':
+      options.nestedOnly = true;
       break;
     case '--buttons-only':
       options.buttonsOnly = true;
@@ -227,7 +231,7 @@ async function main() {
   try {
     // Handle different modes - All modes now include cleanup
     if (options.cleanupOnly || options.altOnly || options.langOnly || options.roleOnly || 
-        options.formsOnly || options.buttonsOnly || options.linksOnly || options.landmarksOnly || 
+        options.formsOnly || options.nestedOnly || options.buttonsOnly || options.linksOnly || options.landmarksOnly || 
         options.headingsOnly || options.brokenLinksOnly) {
       // Individual modes - handle each separately, then run cleanup
     } else {
@@ -331,6 +335,24 @@ async function main() {
       console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
       
       showCompletionMessage(options, 'Form label fixes + cleanup');
+      return;
+      
+    } else if (options.nestedOnly) {
+      // Fix nested interactive controls + cleanup
+      console.log(chalk.blue('🎯 Running nested interactive controls fixes + cleanup...'));
+      const nestedResults = await fixer.fixNestedInteractiveControls(options.directory);
+      const nestedFixed = nestedResults.filter(r => r.status === 'fixed').length;
+      const totalNestedIssues = nestedResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      
+      console.log(chalk.green(`\n✅ Fixed nested interactive controls in ${nestedFixed} files (${totalNestedIssues} issues)`));
+      
+      // Run cleanup
+      console.log(chalk.blue('\n🧹 Running cleanup for duplicate role attributes...'));
+      const cleanupResults = await fixer.cleanupDuplicateRoles(options.directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
+      
+      showCompletionMessage(options, 'Nested interactive controls fixes + cleanup');
       return;
       
     } else if (options.buttonsOnly) {

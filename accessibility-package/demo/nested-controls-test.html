@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nested Interactive Controls Test - Accessibility Issues</title>
+</head>
+<body>
+    <h1>Nested Interactive Controls Test Cases</h1>
+    
+    <!-- Test Case 1: div[role="button"] containing links (like in the axe error) -->
+    <div class="card-buttons" role="button">
+        <a href="https://business.mobile.rakuten.co.jp/solution/service/rakuten-ai-for-business/?scid=we_solution09_2504" class="btn btn-secondary" target="_blank" role="link">詳細を見る</a>
+        <a href="https://business.mobile.rakuten.co.jp/solution/ai/inquiry/?l=id=solution_ai_inquiry1&amp;scid=we_solution10_2504" class="btn btn-primary" target="_blank" role="link">お問い合わせ</a>
+    </div>
+    
+    <!-- Test Case 2: Button containing links -->
+    <button type="button" onclick="handleClick()">
+        <a href="/page1">Link inside button</a>
+        <span>Click me</span>
+    </button>
+    
+    <!-- Test Case 3: Link containing button -->
+    <a href="/page2">
+        <button type="button">Button inside link</button>
+    </a>
+    
+    <!-- Test Case 4: div[role="button"] containing input -->
+    <div role="button" tabindex="0" onclick="submit()">
+        <input type="text" placeholder="Search...">
+        <span>Submit</span>
+    </div>
+    
+    <!-- Test Case 5: Link containing select -->
+    <a href="/settings">
+        <select name="language">
+            <option value="ja">Japanese</option>
+            <option value="en">English</option>
+        </select>
+        Settings
+    </a>
+    
+    <!-- Test Case 6: Button containing textarea -->
+    <button type="submit">
+        <textarea name="comment" placeholder="Enter comment"></textarea>
+        <span>Send</span>
+    </button>
+    
+    <!-- Test Case 7: Multiple levels of nesting -->
+    <div role="button" tabindex="0">
+        <div class="container">
+            <a href="/nested">
+                <button type="button">Deeply nested</button>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Test Case 8: div[role="button"] with tabindex containing interactive elements -->
+    <div role="button" tabindex="0" onclick="handleAction()">
+        <input type="checkbox" id="agree">
+        <label for="agree">I agree</label>
+        <a href="/terms">Terms</a>
+    </div>
+    
+    <!-- Test Case 9: Link containing details/summary -->
+    <a href="/info">
+        <details>
+            <summary>More info</summary>
+            <p>Details content</p>
+        </details>
+    </a>
+    
+    <!-- Test Case 10: Form elements nested in buttons -->
+    <button type="button" class="form-button">
+        <input type="radio" name="choice" value="1">
+        <input type="radio" name="choice" value="2">
+        <span>Choose option</span>
+    </button>
+    
+    <!-- Test Case 11: Correct structure (should not be flagged) -->
+    <div class="card-buttons">
+        <a href="/page1" class="btn btn-secondary">詳細を見る</a>
+        <a href="/page2" class="btn btn-primary">お問い合わせ</a>
+    </div>
+    
+    <!-- Test Case 12: Another correct structure -->
+    <button type="button" onclick="handleClick()">
+        <span>Click me</span>
+        <i class="icon"></i>
+    </button>
+</body>
+</html>

@@ -4093,6 +4093,367 @@ class AccessibilityFixer {
     return fixed;
   }
 
+  async fixNestedInteractiveControls(directory = '.') {
+    console.log(chalk.blue('🎯 Fixing nested interactive controls...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeNestedInteractiveControls(content);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            if (issue.suggestion) {
+              console.log(chalk.gray(`    💡 ${issue.suggestion}`));
+            }
+            totalIssuesFound++;
+          });
+        }
+        
+        const fixed = this.fixNestedInteractiveControlsInContent(content);
+        
+        if (fixed !== content) {
+          if (this.config.backupFiles) {
+            await fs.writeFile(`${file}.backup`, content);
+          }
+          
+          if (!this.config.dryRun) {
+            await fs.writeFile(file, fixed);
+          }
+          
+          console.log(chalk.green(`✅ Fixed nested interactive controls in: ${file}`));
+          results.push({ file, status: 'fixed', issues: issues.length });
+        } else {
+          results.push({ file, status: 'no-change', issues: issues.length });
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} nested interactive control issues across ${results.length} files`));
+    return results;
+  }
+
+  analyzeNestedInteractiveControls(content) {
+    const issues = [];
+    
+    // Define interactive elements and their roles
+    const interactiveElements = [
+      { tag: 'button', role: 'button' },
+      { tag: 'a', role: 'link', requiresHref: true },
+      { tag: 'input', role: 'textbox|button|checkbox|radio|slider|spinbutton' },
+      { tag: 'textarea', role: 'textbox' },
+      { tag: 'select', role: 'combobox|listbox' },
+      { tag: 'details', role: 'group' },
+      { tag: 'summary', role: 'button' }
+    ];
+    
+    // Also check for elements with interactive roles
+    const interactiveRoles = [
+      'button', 'link', 'textbox', 'checkbox', 'radio', 'slider', 
+      'spinbutton', 'combobox', 'listbox', 'menuitem', 'tab', 
+      'treeitem', 'gridcell', 'option'
+    ];
+    
+    // Find all interactive elements
+    const interactiveSelectors = [];
+    
+    // Add tag-based selectors
+    interactiveElements.forEach(element => {
+      if (element.requiresHref) {
+        interactiveSelectors.push(`<${element.tag}[^>]*href[^>]*>`);
+      } else {
+        interactiveSelectors.push(`<${element.tag}[^>]*>`);
+      }
+    });
+    
+    // Add role-based selectors
+    interactiveRoles.forEach(role => {
+      interactiveSelectors.push(`<[^>]*role\\s*=\\s*["']${role}["'][^>]*>`);
+    });
+    
+    // Create combined regex pattern
+    const interactivePattern = new RegExp(interactiveSelectors.join('|'), 'gi');
+    
+    // Find all interactive elements with their positions
+    const interactiveMatches = [];
+    let match;
+    
+    while ((match = interactivePattern.exec(content)) !== null) {
+      const element = match[0];
+      const startPos = match.index;
+      const endPos = this.findElementEndPosition(content, element, startPos);
+      
+      if (endPos > startPos) {
+        interactiveMatches.push({
+          element: element,
+          startPos: startPos,
+          endPos: endPos,
+          fullElement: content.substring(startPos, endPos)
+        });
+      }
+    }
+    
+    // Check for nesting
+    for (let i = 0; i < interactiveMatches.length; i++) {
+      const parent = interactiveMatches[i];
+      
+      for (let j = 0; j < interactiveMatches.length; j++) {
+        if (i === j) continue;
+        
+        const child = interactiveMatches[j];
+        
+        // Check if child is nested inside parent
+        if (child.startPos > parent.startPos && child.endPos < parent.endPos) {
+          const parentType = this.getInteractiveElementType(parent.element);
+          const childType = this.getInteractiveElementType(child.element);
+          
+          issues.push({
+            type: '🎯 Nested interactive controls',
+            description: `${childType} is nested inside ${parentType}`,
+            parentElement: parent.element.substring(0, 100) + '...',
+            childElement: child.element.substring(0, 100) + '...',
+            suggestion: `Remove interactive role from parent or child, or restructure HTML to avoid nesting`
+          });
+        }
+      }
+    }
+    
+    return issues;
+  }
+
+  findElementEndPosition(content, startTag, startPos) {
+    // Extract tag name from start tag
+    const tagMatch = startTag.match(/<(\w+)/);
+    if (!tagMatch) return startPos + startTag.length;
+    
+    const tagName = tagMatch[1].toLowerCase();
+    
+    // Self-closing tags
+    if (startTag.endsWith('/>') || ['input', 'img', 'br', 'hr', 'meta', 'link'].includes(tagName)) {
+      return startPos + startTag.length;
+    }
+    
+    // Find matching closing tag
+    const closeTagPattern = new RegExp(`</${tagName}>`, 'i');
+    const remainingContent = content.substring(startPos + startTag.length);
+    const closeMatch = remainingContent.match(closeTagPattern);
+    
+    if (closeMatch) {
+      return startPos + startTag.length + closeMatch.index + closeMatch[0].length;
+    }
+    
+    // If no closing tag found, assume it ends at the start tag
+    return startPos + startTag.length;
+  }
+
+  getInteractiveElementType(element) {
+    // Extract tag name
+    const tagMatch = element.match(/<(\w+)/);
+    const tagName = tagMatch ? tagMatch[1].toLowerCase() : 'element';
+    
+    // Extract role if present
+    const roleMatch = element.match(/role\s*=\s*["']([^"']+)["']/i);
+    const role = roleMatch ? roleMatch[1] : null;
+    
+    if (role) {
+      return `${tagName}[role="${role}"]`;
+    }
+    
+    // Special cases
+    if (tagName === 'a' && /href\s*=/i.test(element)) {
+      return 'link';
+    }
+    
+    if (tagName === 'input') {
+      const typeMatch = element.match(/type\s*=\s*["']([^"']+)["']/i);
+      const inputType = typeMatch ? typeMatch[1] : 'text';
+      return `input[type="${inputType}"]`;
+    }
+    
+    return tagName;
+  }
+
+  fixNestedInteractiveControlsInContent(content) {
+    let fixed = content;
+    
+    // Strategy 1: Remove role attributes from parent containers that have interactive children
+    const issues = this.analyzeNestedInteractiveControls(content);
+    
+    issues.forEach(issue => {
+      // Try to fix by removing role from parent element
+      const parentRoleMatch = issue.parentElement.match(/role\s*=\s*["'][^"']*["']/i);
+      if (parentRoleMatch) {
+        const parentWithoutRole = issue.parentElement.replace(/\s*role\s*=\s*["'][^"']*["']/i, '');
+        fixed = fixed.replace(issue.parentElement, parentWithoutRole);
+        console.log(chalk.yellow(`  🎯 Removed role attribute from parent element to fix nesting`));
+      }
+    });
+    
+    // Strategy 2: Convert div[role="button"] containing links to regular div
+    fixed = fixed.replace(/<div([^>]*role\s*=\s*["']button["'][^>]*)>([\s\S]*?)<\/div>/gi, (match, attributes, content) => {
+      // Check if content contains interactive elements
+      const hasInteractiveChildren = /<(?:a\s[^>]*href|button|input|select|textarea)[^>]*>/i.test(content);
+      
+      if (hasInteractiveChildren) {
+        // Remove role="button" and any button-related attributes
+        const cleanAttributes = attributes
+          .replace(/\s*role\s*=\s*["']button["']/i, '')
+          .replace(/\s*tabindex\s*=\s*["'][^"']*["']/i, '')
+          .replace(/\s*onclick\s*=\s*["'][^"']*["']/i, '');
+        
+        console.log(chalk.yellow(`  🎯 Converted div[role="button"] to regular div due to interactive children`));
+        return `<div${cleanAttributes}>${content}</div>`;
+      }
+      
+      return match;
+    });
+    
+    // Strategy 3: Remove tabindex from parent containers with interactive children
+    fixed = fixed.replace(/(<[^>]+)(\s+tabindex\s*=\s*["'][^"']*["'])([^>]*>[\s\S]*?<(?:a\s[^>]*href|button|input|select|textarea)[^>]*>[\s\S]*?<\/[^>]+>)/gi, (match, beforeTabindex, tabindexAttr, afterTabindex) => {
+      console.log(chalk.yellow(`  🎯 Removed tabindex from parent element with interactive children`));
+      return beforeTabindex + afterTabindex;
+    });
+    
+    return fixed;
+  }
+
+  async fixAllAccessibilityIssues(directory = '.') {
+    console.log(chalk.blue('🚀 Starting comprehensive accessibility fixes...'));
+    console.log('');
+    
+    const results = {
+      totalFiles: 0,
+      fixedFiles: 0,
+      totalIssues: 0,
+      steps: []
+    };
+    
+    try {
+      // Step 1: HTML lang attributes
+      console.log(chalk.blue('📝 Step 1: HTML lang attributes...'));
+      const langResults = await this.fixHtmlLang(directory);
+      const langFixed = langResults.filter(r => r.status === 'fixed').length;
+      results.steps.push({ step: 1, name: 'HTML lang attributes', fixed: langFixed });
+      
+      // Step 2: Alt attributes
+      console.log(chalk.blue('🖼️ Step 2: Alt attributes...'));
+      const altResults = await this.fixEmptyAltAttributes(directory);
+      const altFixed = altResults.filter(r => r.status === 'fixed').length;
+      const totalAltIssues = altResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 2, name: 'Alt attributes', fixed: altFixed, issues: totalAltIssues });
+      
+      // Step 3: Role attributes
+      console.log(chalk.blue('🎭 Step 3: Role attributes...'));
+      const roleResults = await this.fixRoleAttributes(directory);
+      const roleFixed = roleResults.filter(r => r.status === 'fixed').length;
+      const totalRoleIssues = roleResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 3, name: 'Role attributes', fixed: roleFixed, issues: totalRoleIssues });
+      
+      // Step 4: Form labels
+      console.log(chalk.blue('📋 Step 4: Form labels...'));
+      const formResults = await this.fixFormLabels(directory);
+      const formFixed = formResults.filter(r => r.status === 'fixed').length;
+      const totalFormIssues = formResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 4, name: 'Form labels', fixed: formFixed, issues: totalFormIssues });
+      
+      // Step 5: Nested interactive controls (NEW!)
+      console.log(chalk.blue('🎯 Step 5: Nested interactive controls...'));
+      const nestedResults = await this.fixNestedInteractiveControls(directory);
+      const nestedFixed = nestedResults.filter(r => r.status === 'fixed').length;
+      const totalNestedIssues = nestedResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 5, name: 'Nested interactive controls', fixed: nestedFixed, issues: totalNestedIssues });
+      
+      // Step 6: Button names
+      console.log(chalk.blue('🔘 Step 6: Button names...'));
+      const buttonResults = await this.fixButtonNames(directory);
+      const buttonFixed = buttonResults.filter(r => r.status === 'fixed').length;
+      const totalButtonIssues = buttonResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 6, name: 'Button names', fixed: buttonFixed, issues: totalButtonIssues });
+      
+      // Step 7: Link names
+      console.log(chalk.blue('🔗 Step 7: Link names...'));
+      const linkResults = await this.fixLinkNames(directory);
+      const linkFixed = linkResults.filter(r => r.status === 'fixed').length;
+      const totalLinkIssues = linkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 7, name: 'Link names', fixed: linkFixed, issues: totalLinkIssues });
+      
+      // Step 8: Landmarks
+      console.log(chalk.blue('🏛️ Step 8: Landmarks...'));
+      const landmarkResults = await this.fixLandmarks(directory);
+      const landmarkFixed = landmarkResults.filter(r => r.status === 'fixed').length;
+      const totalLandmarkIssues = landmarkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 8, name: 'Landmarks', fixed: landmarkFixed, issues: totalLandmarkIssues });
+      
+      // Step 9: Heading analysis
+      console.log(chalk.blue('📑 Step 9: Heading analysis...'));
+      const headingResults = await this.analyzeHeadings(directory);
+      const totalHeadingSuggestions = headingResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 9, name: 'Heading analysis', suggestions: totalHeadingSuggestions });
+      console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
+      
+      // Step 10: Broken links check
+      console.log(chalk.blue('🔗 Step 10: Broken links check...'));
+      const brokenLinksResults = await this.checkBrokenLinks(directory);
+      const totalBrokenLinks = brokenLinksResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: 10, name: 'Broken links check', issues: totalBrokenLinks });
+      console.log(chalk.gray('💡 Broken link issues require manual review and cannot be auto-fixed'));
+      
+      // Step 11: Cleanup duplicate roles
+      console.log(chalk.blue('🧹 Step 11: Cleanup duplicate roles...'));
+      const cleanupResults = await this.cleanupDuplicateRoles(directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      results.steps.push({ step: 11, name: 'Cleanup duplicate roles', fixed: cleanupFixed });
+      
+      // Calculate totals
+      results.totalFiles = Math.max(
+        langResults.length, altResults.length, roleResults.length, formResults.length,
+        nestedResults.length, buttonResults.length, linkResults.length, landmarkResults.length, 
+        headingResults.length, brokenLinksResults.length, cleanupResults.length
+      );
+      
+      results.fixedFiles = new Set([
+        ...langResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...altResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...roleResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...formResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...nestedResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...buttonResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...linkResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...landmarkResults.filter(r => r.status === 'fixed').map(r => r.file),
+        ...cleanupResults.filter(r => r.status === 'fixed').map(r => r.file)
+      ]).size;
+      
+      results.totalIssues = totalAltIssues + totalRoleIssues + totalFormIssues + totalNestedIssues +
+                           totalButtonIssues + totalLinkIssues + totalLandmarkIssues;
+      
+      // Final summary
+      console.log(chalk.green('\n🎉 All accessibility fixes completed!'));
+      console.log(chalk.blue('📊 Final Summary:'));
+      console.log(chalk.blue(`   Total files scanned: ${results.totalFiles}`));
+      console.log(chalk.blue(`   Files fixed: ${results.fixedFiles}`));
+      console.log(chalk.blue(`   Total issues resolved: ${results.totalIssues}`));
+      
+      if (this.config.dryRun) {
+        console.log(chalk.yellow('\n💡 This was a dry run. Use without --dry-run to apply changes.'));
+      }
+      
+      return results;
+      
+    } catch (error) {
+      console.error(chalk.red(`❌ Error during comprehensive fixes: ${error.message}`));
+      throw error;
+    }
+  }
+
   async findHtmlFiles(directory) {
     const files = [];
     
