@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heading Structure Test - Accessibility Issues</title>
+</head>
+<body>
+    <h1>Heading Structure Test Cases</h1>
+    
+    <!-- Test Case 1: Missing h1 (this will be converted from h2) -->
+    <h2>This should be h1</h2>
+    <p>Main content of the page</p>
+    
+    <!-- Test Case 2: Multiple h1 elements -->
+    <h1>First h1 (should stay)</h1>
+    <h1>Second h1 (should become h2)</h1>
+    <h1>Third h1 (should become h2)</h1>
+    
+    <!-- Test Case 3: Level skipping -->
+    <h2>Section heading</h2>
+    <h4>Subsection (skips h3 - should become h3)</h4>
+    <h6>Sub-subsection (skips h4, h5 - should become h4)</h6>
+    
+    <!-- Test Case 4: Empty headings -->
+    <h3></h3>
+    <h4>   </h4>
+    <h5><span></span></h5>
+    
+    <!-- Test Case 5: Duplicate headings -->
+    <h2>Products</h2>
+    <p>Some content about products</p>
+    <h2>Products</h2>
+    <p>More content about products</p>
+    
+    <!-- Test Case 6: Proper structure (should not be changed) -->
+    <h2>Proper Section</h2>
+    <h3>Proper Subsection</h3>
+    <h4>Proper Sub-subsection</h4>
+    <p>Content with proper heading hierarchy</p>
+    
+    <!-- Test Case 7: Complex nesting with issues -->
+    <h2>Services</h2>
+    <h5>Service 1 (should be h3)</h5>
+    <h6>Details (should be h4)</h6>
+    <h3>Service 2 (correct)</h3>
+    <h5>More details (should be h4)</h5>
+    
+    <!-- Test Case 8: Empty headings with context -->
+    <div class="section">
+        <h3></h3>
+        <p>This section talks about our company history and achievements.</p>
+    </div>
+    
+    <div class="product-info">
+        <h4>   </h4>
+        <p>Our flagship product offers innovative solutions for modern businesses.</p>
+    </div>
+</body>
+</html>

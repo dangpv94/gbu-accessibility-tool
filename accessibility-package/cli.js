@@ -28,12 +28,16 @@ const options = {
   linksOnly: false,
   landmarksOnly: false,
   headingsOnly: false,
+  dlOnly: false,
   brokenLinksOnly: false,
   // Enhanced alt options
   enhancedAlt: false,
   altCreativity: 'balanced', // conservative, balanced, creative
   includeEmotions: false,
-  strictAltChecking: false
+  strictAltChecking: false,
+  // Advanced features options
+  autoFixHeadings: false,
+  fixDescriptionLists: true
 };
 
 // Parse arguments
@@ -96,9 +100,18 @@ for (let i = 0; i < args.length; i++) {
     case '--headings-only':
       options.headingsOnly = true;
       break;
+    case '--dl-only':
+      options.dlOnly = true;
+      break;
     case '--links-check':
     case '--broken-links':
       options.brokenLinksOnly = true;
+      break;
+    case '--auto-fix-headings':
+      options.autoFixHeadings = true;
+      break;
+    case '--no-fix-dl':
+      options.fixDescriptionLists = false;
       break;
     case '--enhanced-alt':
       options.enhancedAlt = true;
@@ -225,14 +238,16 @@ async function main() {
     enhancedAltMode: options.enhancedAlt,
     altCreativity: options.altCreativity,
     includeEmotions: options.includeEmotions,
-    strictAltChecking: options.strictAltChecking
+    strictAltChecking: options.strictAltChecking,
+    autoFixHeadings: options.autoFixHeadings,
+    fixDescriptionLists: options.fixDescriptionLists
   });
 
   try {
     // Handle different modes - All modes now include cleanup
     if (options.cleanupOnly || options.altOnly || options.langOnly || options.roleOnly || 
         options.formsOnly || options.nestedOnly || options.buttonsOnly || options.linksOnly || options.landmarksOnly || 
-        options.headingsOnly || options.brokenLinksOnly) {
+        options.headingsOnly || options.dlOnly || options.brokenLinksOnly) {
       // Individual modes - handle each separately, then run cleanup
     } else {
       // Default mode: Run comprehensive fix (all fixes including cleanup)
@@ -410,15 +425,45 @@ async function main() {
       return;
       
     } else if (options.headingsOnly) {
-      // Analyze headings only (no fixes, no cleanup)
-      console.log(chalk.blue('📑 Running heading analysis only...'));
-      const headingResults = await fixer.analyzeHeadings(options.directory);
-      const totalSuggestions = headingResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      // Fix heading structure + cleanup
+      console.log(chalk.blue('📑 Running heading structure fixes + cleanup...'));
+      const headingResults = await fixer.fixHeadingStructure(options.directory);
+      const headingFixed = headingResults.filter(r => r.status === 'fixed').length;
+      const totalHeadingIssues = headingResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      const totalHeadingFixes = headingResults.reduce((sum, r) => sum + (r.fixes || 0), 0);
       
-      console.log(chalk.green(`\n✅ Analyzed headings in ${headingResults.length} files (${totalSuggestions} suggestions)`));
-      console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
+      console.log(chalk.green(`\n✅ Processed headings in ${headingResults.length} files (${totalHeadingIssues} issues found)`));
+      if (options.autoFixHeadings) {
+        console.log(chalk.green(`✅ Fixed ${totalHeadingFixes} heading issues automatically`));
+      } else {
+        console.log(chalk.gray('💡 Use --auto-fix-headings to enable automatic heading fixes'));
+      }
       
-      showCompletionMessage(options, 'Heading analysis');
+      // Run cleanup
+      console.log(chalk.blue('\n🧹 Running cleanup for duplicate role attributes...'));
+      const cleanupResults = await fixer.cleanupDuplicateRoles(options.directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
+      
+      showCompletionMessage(options, 'Heading structure fixes + cleanup');
+      return;
+      
+    } else if (options.dlOnly) {
+      // Fix description lists + cleanup
+      console.log(chalk.blue('📋 Running description list fixes + cleanup...'));
+      const dlResults = await fixer.fixDescriptionLists(options.directory);
+      const dlFixed = dlResults.filter(r => r.status === 'fixed').length;
+      const totalDlIssues = dlResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      
+      console.log(chalk.green(`\n✅ Fixed description lists in ${dlFixed} files (${totalDlIssues} issues)`));
+      
+      // Run cleanup
+      console.log(chalk.blue('\n🧹 Running cleanup for duplicate role attributes...'));
+      const cleanupResults = await fixer.cleanupDuplicateRoles(options.directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
+      
+      showCompletionMessage(options, 'Description list fixes + cleanup');
       return;
       
     } else if (options.brokenLinksOnly) {

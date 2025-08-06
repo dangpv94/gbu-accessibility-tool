@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0] - 2025-01-08
+
+### Added
+- **Enhanced Heading Structure Auto-Fix**: Automatic fixing of heading hierarchy issues with `--auto-fix-headings` option
+- **Improved Nested Controls Detection**: Better detection and fixing of nested interactive controls
+- **Advanced Test Cases**: New comprehensive test files for heading structure and nested controls
+- **Enhanced Alt Text Quality**: Improved context-aware alt text generation with better vocabulary support
+
+### Enhanced
+- **Heading Analysis**: More comprehensive detection of heading issues including empty headings, level skipping, and duplicates
+- **Interactive Controls**: Better handling of complex nested control scenarios
+- **Test Coverage**: Expanded demo files for better testing and validation
+- **Performance**: Optimized processing for large files and complex HTML structures
+
+### Fixed
+- **Heading Level Corrections**: Automatic correction of improper heading hierarchies
+- **Empty Heading Detection**: Better identification and handling of empty headings
+- **Control Nesting Issues**: Improved resolution of nested interactive control conflicts
+
 ## [3.2.0] - 2024-07-28
 
 ### Added

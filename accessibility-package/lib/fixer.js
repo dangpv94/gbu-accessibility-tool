@@ -1236,6 +1236,9 @@ class AccessibilityFixer {
       altCreativity: config.altCreativity || 'balanced', // conservative, balanced, creative
       includeEmotions: config.includeEmotions || false,
       strictAltChecking: config.strictAltChecking || false,
+      // New options for advanced features
+      autoFixHeadings: config.autoFixHeadings || false, // Enable automatic heading fixes
+      fixDescriptionLists: config.fixDescriptionLists || true, // Enable DL structure fixes
       ...config
     };
     
@@ -4452,6 +4455,637 @@ class AccessibilityFixer {
       console.error(chalk.red(`❌ Error during comprehensive fixes: ${error.message}`));
       throw error;
     }
+  }
+
+  async fixHeadingStructure(directory = '.') {
+    console.log(chalk.blue('📑 Fixing heading structure...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    let totalIssuesFixed = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const analysis = this.analyzeHeadingStructure(content);
+        
+        if (analysis.issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          analysis.issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            if (issue.suggestion) {
+              console.log(chalk.gray(`    💡 ${issue.suggestion}`));
+            }
+            totalIssuesFound++;
+          });
+        }
+        
+        let fixed = content;
+        let changesMade = false;
+        
+        if (this.config.autoFixHeadings) {
+          fixed = this.fixHeadingStructureInContent(content, analysis);
+          changesMade = fixed !== content;
+          
+          if (changesMade) {
+            const fixedCount = this.countHeadingFixes(content, fixed);
+            totalIssuesFixed += fixedCount;
+            
+            if (this.config.backupFiles) {
+              await fs.writeFile(`${file}.backup`, content);
+            }
+            
+            if (!this.config.dryRun) {
+              await fs.writeFile(file, fixed);
+            }
+            
+            console.log(chalk.green(`✅ Fixed heading structure in: ${file} (${fixedCount} fixes)`));
+            results.push({ file, status: 'fixed', issues: analysis.issues.length, fixes: fixedCount });
+          } else {
+            results.push({ file, status: 'no-change', issues: analysis.issues.length });
+          }
+        } else {
+          results.push({ file, status: 'analyzed', issues: analysis.issues.length });
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} heading issues across ${results.length} files`));
+    if (this.config.autoFixHeadings) {
+      console.log(chalk.green(`   Fixed ${totalIssuesFixed} heading issues automatically`));
+    } else {
+      console.log(chalk.gray('💡 Use --auto-fix-headings option to enable automatic fixes'));
+    }
+    
+    return results;
+  }
+
+  analyzeHeadingStructure(content) {
+    const issues = [];
+    const suggestions = [];
+    
+    // Extract all headings with their levels, text, and positions
+    const headingPattern = /<h([1-6])[^>]*>([\s\S]*?)<\/h[1-6]>/gi;
+    const headings = [];
+    let match;
+    
+    while ((match = headingPattern.exec(content)) !== null) {
+      const level = parseInt(match[1]);
+      const rawText = match[2];
+      const text = rawText.replace(/<[^>]*>/g, '').trim();
+      const fullTag = match[0];
+      
+      headings.push({ 
+        level, 
+        text, 
+        rawText,
+        fullTag,
+        position: match.index,
+        originalMatch: match[0]
+      });
+    }
+    
+    if (headings.length === 0) {
+      issues.push({
+        type: '📑 No headings found',
+        description: 'Page has no heading elements',
+        suggestion: 'Add heading elements (h1-h6) to structure content',
+        severity: 'error',
+        fixable: false
+      });
+      return { issues, suggestions, headings };
+    }
+    
+    // Check for h1
+    const h1Count = headings.filter(h => h.level === 1).length;
+    if (h1Count === 0) {
+      issues.push({
+        type: '📑 Missing h1',
+        description: 'Page should have exactly one h1 element',
+        suggestion: 'Add an h1 element as the main page heading',
+        severity: 'error',
+        fixable: true,
+        fix: 'add-h1'
+      });
+    } else if (h1Count > 1) {
+      issues.push({
+        type: '📑 Multiple h1 elements',
+        description: `Found ${h1Count} h1 elements, should have only one`,
+        suggestion: 'Convert extra h1 elements to h2-h6 as appropriate',
+        severity: 'error',
+        fixable: true,
+        fix: 'fix-multiple-h1'
+      });
+    }
+    
+    // Check heading order and hierarchy
+    for (let i = 1; i < headings.length; i++) {
+      const current = headings[i];
+      const previous = headings[i - 1];
+      
+      // Check for level skipping
+      if (current.level > previous.level + 1) {
+        issues.push({
+          type: '📑 Heading level skip',
+          description: `Heading level jumps from h${previous.level} to h${current.level}`,
+          suggestion: `Use h${previous.level + 1} instead of h${current.level}`,
+          severity: 'warning',
+          fixable: true,
+          fix: 'fix-level-skip',
+          targetIndex: i,
+          correctLevel: previous.level + 1
+        });
+      }
+    }
+    
+    // Check for empty headings
+    headings.forEach((heading, index) => {
+      if (!heading.text) {
+        issues.push({
+          type: '📑 Empty heading',
+          description: `Heading ${index + 1} (h${heading.level}) is empty`,
+          suggestion: 'Add descriptive text to the heading or remove it',
+          severity: 'error',
+          fixable: true,
+          fix: 'fix-empty-heading',
+          targetIndex: index
+        });
+      }
+    });
+    
+    // Check for consecutive headings with same level and similar content
+    for (let i = 1; i < headings.length; i++) {
+      const current = headings[i];
+      const previous = headings[i - 1];
+      
+      if (current.level === previous.level && 
+          current.text.toLowerCase() === previous.text.toLowerCase() &&
+          current.text.length > 0) {
+        issues.push({
+          type: '📑 Duplicate heading',
+          description: `Duplicate h${current.level} heading: "${current.text}"`,
+          suggestion: 'Make heading text unique or merge content',
+          severity: 'warning',
+          fixable: false
+        });
+      }
+    }
+    
+    return { issues, suggestions, headings };
+  }
+
+  fixHeadingStructureInContent(content, analysis) {
+    let fixed = content;
+    const { issues, headings } = analysis;
+    
+    // Sort issues by position (descending) to avoid position shifts
+    const fixableIssues = issues
+      .filter(issue => issue.fixable)
+      .sort((a, b) => (b.targetIndex || 0) - (a.targetIndex || 0));
+    
+    fixableIssues.forEach(issue => {
+      switch (issue.fix) {
+        case 'add-h1':
+          fixed = this.addMissingH1(fixed);
+          break;
+          
+        case 'fix-multiple-h1':
+          fixed = this.fixMultipleH1(fixed, headings);
+          break;
+          
+        case 'fix-level-skip':
+          if (issue.targetIndex !== undefined && issue.correctLevel) {
+            fixed = this.fixHeadingLevelSkip(fixed, headings[issue.targetIndex], issue.correctLevel);
+          }
+          break;
+          
+        case 'fix-empty-heading':
+          if (issue.targetIndex !== undefined) {
+            fixed = this.fixEmptyHeading(fixed, headings[issue.targetIndex]);
+          }
+          break;
+      }
+    });
+    
+    return fixed;
+  }
+
+  addMissingH1(content) {
+    // Try to find the first heading and convert it to h1
+    const firstHeadingMatch = content.match(/<h([2-6])[^>]*>([\s\S]*?)<\/h[2-6]>/i);
+    
+    if (firstHeadingMatch) {
+      const level = firstHeadingMatch[1];
+      const replacement = firstHeadingMatch[0].replace(
+        new RegExp(`<h${level}([^>]*)>`, 'i'),
+        '<h1$1>'
+      ).replace(
+        new RegExp(`</h${level}>`, 'i'),
+        '</h1>'
+      );
+      
+      const result = content.replace(firstHeadingMatch[0], replacement);
+      console.log(chalk.yellow(`  📑 Converted first h${level} to h1`));
+      return result;
+    }
+    
+    // If no headings found, try to add h1 based on title or first significant text
+    const titleMatch = content.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch) {
+      const title = titleMatch[1].trim();
+      // Insert h1 after opening body tag
+      const bodyMatch = content.match(/(<body[^>]*>)/i);
+      if (bodyMatch) {
+        const h1Element = `\n  <h1>${title}</h1>\n`;
+        const result = content.replace(bodyMatch[1], bodyMatch[1] + h1Element);
+        console.log(chalk.yellow(`  📑 Added h1 element with title: "${title}"`));
+        return result;
+      }
+    }
+    
+    return content;
+  }
+
+  fixMultipleH1(content, headings) {
+    const h1Elements = headings.filter(h => h.level === 1);
+    
+    // Keep the first h1, convert others to h2
+    for (let i = 1; i < h1Elements.length; i++) {
+      const h1 = h1Elements[i];
+      const replacement = h1.fullTag.replace(/<h1([^>]*)>/i, '<h2$1>').replace(/<\/h1>/i, '</h2>');
+      content = content.replace(h1.fullTag, replacement);
+      console.log(chalk.yellow(`  📑 Converted extra h1 to h2: "${h1.text}"`));
+    }
+    
+    return content;
+  }
+
+  fixHeadingLevelSkip(content, heading, correctLevel) {
+    const replacement = heading.fullTag
+      .replace(new RegExp(`<h${heading.level}([^>]*)>`, 'i'), `<h${correctLevel}$1>`)
+      .replace(new RegExp(`</h${heading.level}>`, 'i'), `</h${correctLevel}>`);
+    
+    const result = content.replace(heading.fullTag, replacement);
+    console.log(chalk.yellow(`  📑 Fixed level skip: h${heading.level} → h${correctLevel} for "${heading.text}"`));
+    return result;
+  }
+
+  fixEmptyHeading(content, heading) {
+    // Generate meaningful text based on context
+    const contextText = this.generateHeadingText(content, heading);
+    
+    if (contextText) {
+      const replacement = heading.fullTag.replace(
+        /<h([1-6])([^>]*)>[\s\S]*?<\/h[1-6]>/i,
+        `<h$1$2>${contextText}</h$1>`
+      );
+      
+      const result = content.replace(heading.fullTag, replacement);
+      console.log(chalk.yellow(`  📑 Added text to empty heading: "${contextText}"`));
+      return result;
+    }
+    
+    // If can't generate text, remove the empty heading
+    const result = content.replace(heading.fullTag, '');
+    console.log(chalk.yellow(`  📑 Removed empty h${heading.level} heading`));
+    return result;
+  }
+
+  generateHeadingText(content, heading) {
+    const lang = this.config.language;
+    
+    // Try to find nearby text content
+    const position = heading.position;
+    const contextRange = 500;
+    const beforeContext = content.substring(Math.max(0, position - contextRange), position);
+    const afterContext = content.substring(position + heading.fullTag.length, position + heading.fullTag.length + contextRange);
+    
+    // Look for meaningful text in nearby paragraphs
+    const nearbyText = (beforeContext + afterContext).replace(/<[^>]*>/g, ' ').trim();
+    const words = nearbyText.split(/\s+/).filter(word => word.length > 2);
+    
+    if (words.length > 0) {
+      const meaningfulWords = words.slice(0, 3);
+      return meaningfulWords.join(' ');
+    }
+    
+    // Fallback to generic text based on language
+    const genericTexts = {
+      ja: ['見出し', 'セクション', 'コンテンツ'],
+      en: ['Heading', 'Section', 'Content'],
+      vi: ['Tiêu đề', 'Phần', 'Nội dung']
+    };
+    
+    const texts = genericTexts[lang] || genericTexts.en;
+    return texts[0];
+  }
+
+  countHeadingFixes(originalContent, fixedContent) {
+    // Count the number of heading-related changes
+    const originalHeadings = (originalContent.match(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/gi) || []).length;
+    const fixedHeadings = (fixedContent.match(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/gi) || []).length;
+    
+    // Simple heuristic: count tag changes
+    let changes = 0;
+    
+    // Count h1 additions
+    const originalH1 = (originalContent.match(/<h1[^>]*>/gi) || []).length;
+    const fixedH1 = (fixedContent.match(/<h1[^>]*>/gi) || []).length;
+    changes += Math.abs(fixedH1 - originalH1);
+    
+    // Count level changes (rough estimate)
+    for (let level = 1; level <= 6; level++) {
+      const originalCount = (originalContent.match(new RegExp(`<h${level}[^>]*>`, 'gi')) || []).length;
+      const fixedCount = (fixedContent.match(new RegExp(`<h${level}[^>]*>`, 'gi')) || []).length;
+      changes += Math.abs(fixedCount - originalCount);
+    }
+    
+    return Math.max(1, Math.floor(changes / 2)); // Rough estimate
+  }
+
+  async fixDescriptionLists(directory = '.') {
+    console.log(chalk.blue('📋 Fixing description list structure...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeDescriptionListStructure(content);
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            if (issue.suggestion) {
+              console.log(chalk.gray(`    💡 ${issue.suggestion}`));
+            }
+            totalIssuesFound++;
+          });
+        }
+        
+        const fixed = this.fixDescriptionListStructureInContent(content);
+        
+        if (fixed !== content) {
+          if (this.config.backupFiles) {
+            await fs.writeFile(`${file}.backup`, content);
+          }
+          
+          if (!this.config.dryRun) {
+            await fs.writeFile(file, fixed);
+          }
+          
+          console.log(chalk.green(`✅ Fixed description list structure in: ${file}`));
+          results.push({ file, status: 'fixed', issues: issues.length });
+        } else {
+          results.push({ file, status: 'no-change', issues: issues.length });
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} description list issues across ${results.length} files`));
+    return results;
+  }
+
+  analyzeDescriptionListStructure(content) {
+    const issues = [];
+    
+    // Find all dl elements
+    const dlPattern = /<dl[^>]*>([\s\S]*?)<\/dl>/gi;
+    let dlMatch;
+    let dlIndex = 0;
+    
+    while ((dlMatch = dlPattern.exec(content)) !== null) {
+      dlIndex++;
+      const dlContent = dlMatch[1];
+      const dlElement = dlMatch[0];
+      
+      // Analyze the content inside dl
+      const dtElements = (dlContent.match(/<dt[^>]*>[\s\S]*?<\/dt>/gi) || []);
+      const ddElements = (dlContent.match(/<dd[^>]*>[\s\S]*?<\/dd>/gi) || []);
+      
+      // Check for empty dl
+      if (dtElements.length === 0 && ddElements.length === 0) {
+        issues.push({
+          type: '📋 Empty description list',
+          description: `Description list ${dlIndex} is empty`,
+          suggestion: 'Add dt/dd pairs or remove the empty dl element',
+          severity: 'error',
+          dlIndex,
+          fix: 'remove-empty-dl'
+        });
+        continue;
+      }
+      
+      // Check for missing dt elements
+      if (dtElements.length === 0 && ddElements.length > 0) {
+        issues.push({
+          type: '📋 Missing dt elements',
+          description: `Description list ${dlIndex} has dd elements but no dt elements`,
+          suggestion: 'Add dt elements to describe the dd content',
+          severity: 'error',
+          dlIndex,
+          fix: 'add-missing-dt'
+        });
+      }
+      
+      // Check for missing dd elements
+      if (dtElements.length > 0 && ddElements.length === 0) {
+        issues.push({
+          type: '📋 Missing dd elements',
+          description: `Description list ${dlIndex} has dt elements but no dd elements`,
+          suggestion: 'Add dd elements to provide descriptions',
+          severity: 'error',
+          dlIndex,
+          fix: 'add-missing-dd'
+        });
+      }
+      
+      // Check for improper nesting (non-dt/dd elements directly in dl)
+      const invalidChildren = dlContent.match(/<(?!dt|dd|\/dt|\/dd)[a-zA-Z][^>]*>/g);
+      if (invalidChildren) {
+        const invalidTags = [...new Set(invalidChildren.map(tag => tag.match(/<([a-zA-Z]+)/)[1]))];
+        issues.push({
+          type: '📋 Invalid dl children',
+          description: `Description list ${dlIndex} contains invalid child elements: ${invalidTags.join(', ')}`,
+          suggestion: 'Only dt and dd elements should be direct children of dl',
+          severity: 'warning',
+          dlIndex,
+          fix: 'wrap-invalid-children'
+        });
+      }
+      
+      // Check for empty dt/dd elements
+      dtElements.forEach((dt, index) => {
+        const dtText = dt.replace(/<[^>]*>/g, '').trim();
+        if (!dtText) {
+          issues.push({
+            type: '📋 Empty dt element',
+            description: `Empty dt element in description list ${dlIndex}`,
+            suggestion: 'Add descriptive text to the dt element',
+            severity: 'warning',
+            dlIndex,
+            dtIndex: index,
+            fix: 'fix-empty-dt'
+          });
+        }
+      });
+      
+      ddElements.forEach((dd, index) => {
+        const ddText = dd.replace(/<[^>]*>/g, '').trim();
+        if (!ddText) {
+          issues.push({
+            type: '📋 Empty dd element',
+            description: `Empty dd element in description list ${dlIndex}`,
+            suggestion: 'Add descriptive content to the dd element',
+            severity: 'warning',
+            dlIndex,
+            ddIndex: index,
+            fix: 'fix-empty-dd'
+          });
+        }
+      });
+      
+      // Check for proper dt/dd pairing
+      if (dtElements.length > 0 && ddElements.length > 0) {
+        // Basic check: should have at least one dd for each dt
+        if (ddElements.length < dtElements.length) {
+          issues.push({
+            type: '📋 Insufficient dd elements',
+            description: `Description list ${dlIndex} has ${dtElements.length} dt elements but only ${ddElements.length} dd elements`,
+            suggestion: 'Each dt should have at least one corresponding dd element',
+            severity: 'warning',
+            dlIndex
+          });
+        }
+      }
+    }
+    
+    return issues;
+  }
+
+  fixDescriptionListStructureInContent(content) {
+    let fixed = content;
+    
+    // Fix empty dl elements
+    fixed = fixed.replace(/<dl[^>]*>\s*<\/dl>/gi, (match) => {
+      console.log(chalk.yellow(`  📋 Removed empty description list`));
+      return '';
+    });
+    
+    // Fix dl elements with only whitespace
+    fixed = fixed.replace(/<dl[^>]*>[\s\n\r]*<\/dl>/gi, (match) => {
+      console.log(chalk.yellow(`  📋 Removed empty description list`));
+      return '';
+    });
+    
+    // Fix dl elements with invalid direct children
+    fixed = fixed.replace(/<dl([^>]*)>([\s\S]*?)<\/dl>/gi, (match, attributes, content) => {
+      // Extract dt and dd elements
+      const dtElements = content.match(/<dt[^>]*>[\s\S]*?<\/dt>/gi) || [];
+      const ddElements = content.match(/<dd[^>]*>[\s\S]*?<\/dd>/gi) || [];
+      
+      // Find invalid children (not dt or dd)
+      let cleanContent = content;
+      
+      // Remove invalid direct children by wrapping them in dd
+      cleanContent = cleanContent.replace(/<(?!dt|dd|\/dt|\/dd)([a-zA-Z][^>]*)>([\s\S]*?)<\/[a-zA-Z]+>/gi, (invalidMatch, tag, innerContent) => {
+        console.log(chalk.yellow(`  📋 Wrapped invalid child element in dd`));
+        return `<dd>${invalidMatch}</dd>`;
+      });
+      
+      // Handle text nodes that are not in dt/dd
+      cleanContent = cleanContent.replace(/^([^<]+)(?=<(?:dt|dd))/gm, (textMatch) => {
+        const trimmed = textMatch.trim();
+        if (trimmed) {
+          console.log(chalk.yellow(`  📋 Wrapped loose text in dd`));
+          return `<dd>${trimmed}</dd>`;
+        }
+        return '';
+      });
+      
+      return `<dl${attributes}>${cleanContent}</dl>`;
+    });
+    
+    // Add missing dd elements for dt elements without corresponding dd
+    fixed = fixed.replace(/<dl([^>]*)>([\s\S]*?)<\/dl>/gi, (match, attributes, content) => {
+      const dtPattern = /<dt[^>]*>([\s\S]*?)<\/dt>/gi;
+      const ddPattern = /<dd[^>]*>[\s\S]*?<\/dd>/gi;
+      
+      const dtMatches = [...content.matchAll(dtPattern)];
+      const ddMatches = [...content.matchAll(ddPattern)];
+      
+      if (dtMatches.length > 0 && ddMatches.length === 0) {
+        // Add dd elements after each dt
+        let fixedContent = content;
+        
+        // Process from end to beginning to maintain positions
+        for (let i = dtMatches.length - 1; i >= 0; i--) {
+          const dtMatch = dtMatches[i];
+          const dtText = dtMatch[1].replace(/<[^>]*>/g, '').trim();
+          const ddText = this.generateDescriptionForTerm(dtText);
+          
+          const insertPosition = dtMatch.index + dtMatch[0].length;
+          fixedContent = fixedContent.slice(0, insertPosition) + 
+                        `\n    <dd>${ddText}</dd>` + 
+                        fixedContent.slice(insertPosition);
+        }
+        
+        console.log(chalk.yellow(`  📋 Added missing dd elements for ${dtMatches.length} dt elements`));
+        return `<dl${attributes}>${fixedContent}</dl>`;
+      }
+      
+      return match;
+    });
+    
+    // Fix empty dt/dd elements
+    fixed = fixed.replace(/<dt[^>]*>\s*<\/dt>/gi, (match) => {
+      const lang = this.config.language;
+      const defaultText = lang === 'ja' ? '項目' : lang === 'vi' ? 'Mục' : 'Term';
+      console.log(chalk.yellow(`  📋 Added text to empty dt element`));
+      return match.replace(/>\s*</, `>${defaultText}<`);
+    });
+    
+    fixed = fixed.replace(/<dd[^>]*>\s*<\/dd>/gi, (match) => {
+      const lang = this.config.language;
+      const defaultText = lang === 'ja' ? '説明' : lang === 'vi' ? 'Mô tả' : 'Description';
+      console.log(chalk.yellow(`  📋 Added text to empty dd element`));
+      return match.replace(/>\s*</, `>${defaultText}<`);
+    });
+    
+    return fixed;
+  }
+
+  generateDescriptionForTerm(termText) {
+    const lang = this.config.language;
+    
+    // Try to generate meaningful description based on term
+    if (termText) {
+      const descriptions = {
+        ja: `${termText}の説明`,
+        en: `Description of ${termText}`,
+        vi: `Mô tả về ${termText}`
+      };
+      return descriptions[lang] || descriptions.en;
+    }
+    
+    // Fallback to generic description
+    const fallbacks = {
+      ja: '説明',
+      en: 'Description',
+      vi: 'Mô tả'
+    };
+    
+    return fallbacks[lang] || fallbacks.en;
   }
 
   async findHtmlFiles(directory) {
