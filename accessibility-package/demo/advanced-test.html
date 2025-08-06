@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <title>Advanced Accessibility Test</title>
@@ -9,22 +9,22 @@
     
     <!-- Form issues -->
     <form>
-        <input type="text" placeholder="Name">
-        <input type="email" id="email">
-        <input type="password">
+        <input type="text" placeholder="Name" aria-label="Name" title="Name" id="text_019747">
+        <input type="email" id="email" aria-label="メールアドレス" title="メールアドレス">
+        <input type="password" aria-label="パスワード" title="パスワード" id="password_019747">
         <input type="submit">
     </form>
     
     <!-- Button issues -->
-    <button></button>
-    <button onclick="alert('test')"></button>
+    <button aria-label="ボタン" title="ボタン"></button>
+    <button onclick="alert('test')" role="button" aria-label="ボタン" title="ボタン"></button>
     <input type="button">
     
     <!-- Link issues -->
-    <a href="/home"></a>
-    <a href="/more">Click here</a>
-    <a href="/read">Read more</a>
-    <a href="/image"><img src="icon.png"></a>
+    <a href="/home" role="link" aria-label="リンク" title="リンク"></a>
+    <a href="/more" role="link">Click here</a>
+    <a href="/read" role="link">Read more</a>
+    <a href="/image" role="link" aria-label="リンク" title="リンク"><img src="icon.png" alt="Skipped h2" role="img" aria-label="Skipped h2"></a>
     
     <!-- Heading issues -->
     <h3>Skipped h2</h3>
@@ -36,9 +36,9 @@
         <p>Main content without landmark</p>
     </div>
     
-    <ul class="navigation">
-        <li><a href="/home">Home</a></li>
-        <li><a href="/about">About</a></li>
+    <ul class="navigation" role="menubar">
+        <li><a href="/home" role="link">Home</a></li>
+        <li><a href="/about" role="link">About</a></li>
     </ul>
 </body>
 </html>

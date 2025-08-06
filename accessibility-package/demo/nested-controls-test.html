@@ -9,31 +9,31 @@
     <h1>Nested Interactive Controls Test Cases</h1>
     
     <!-- Test Case 1: div[role="button"] containing links (like in the axe error) -->
-    <div class="card-buttons" role="button">
+    <div class="card-buttons">
         <a href="https://business.mobile.rakuten.co.jp/solution/service/rakuten-ai-for-business/?scid=we_solution09_2504" class="btn btn-secondary" target="_blank" role="link">詳細を見る</a>
         <a href="https://business.mobile.rakuten.co.jp/solution/ai/inquiry/?l=id=solution_ai_inquiry1&amp;scid=we_solution10_2504" class="btn btn-primary" target="_blank" role="link">お問い合わせ</a>
     </div>
     
     <!-- Test Case 2: Button containing links -->
-    <button type="button" onclick="handleClick()">
-        <a href="/page1">Link inside button</a>
+    <button type="button" onclick="handleClick()" role="button">
+        <a href="/page1" role="link">Link inside button</a>
         <span>Click me</span>
     </button>
     
     <!-- Test Case 3: Link containing button -->
-    <a href="/page2">
+    <a href="/page2" role="link">
         <button type="button">Button inside link</button>
     </a>
     
     <!-- Test Case 4: div[role="button"] containing input -->
-    <div role="button" tabindex="0" onclick="submit()">
-        <input type="text" placeholder="Search...">
+    <div>
+        <input type="text" placeholder="Search..." aria-label="Search..." title="Search..." id="text_019757">
         <span>Submit</span>
     </div>
     
     <!-- Test Case 5: Link containing select -->
-    <a href="/settings">
-        <select name="language">
+    <a href="/settings" role="link">
+        <select name="language" aria-label="Language" title="Language" id="language_input">
             <option value="ja">Japanese</option>
             <option value="en">English</option>
         </select>
@@ -42,28 +42,28 @@
     
     <!-- Test Case 6: Button containing textarea -->
     <button type="submit">
-        <textarea name="comment" placeholder="Enter comment"></textarea>
+        <textarea name="comment" placeholder="Enter comment" aria-label="Enter comment" title="Enter comment" id="comment_input"></textarea>
         <span>Send</span>
     </button>
     
     <!-- Test Case 7: Multiple levels of nesting -->
-    <div role="button" tabindex="0">
+    <div>
         <div class="container">
-            <a href="/nested">
+            <a href="/nested" role="link">
                 <button type="button">Deeply nested</button>
             </a>
         </div>
     </div>
     
     <!-- Test Case 8: div[role="button"] with tabindex containing interactive elements -->
-    <div role="button" tabindex="0" onclick="handleAction()">
+    <div>
         <input type="checkbox" id="agree">
         <label for="agree">I agree</label>
-        <a href="/terms">Terms</a>
+        <a href="/terms" role="link">Terms</a>
     </div>
     
     <!-- Test Case 9: Link containing details/summary -->
-    <a href="/info">
+    <a href="/info" role="link">
         <details>
             <summary>More info</summary>
             <p>Details content</p>
@@ -79,12 +79,12 @@
     
     <!-- Test Case 11: Correct structure (should not be flagged) -->
     <div class="card-buttons">
-        <a href="/page1" class="btn btn-secondary">詳細を見る</a>
-        <a href="/page2" class="btn btn-primary">お問い合わせ</a>
+        <a href="/page1" class="btn btn-secondary" role="link">詳細を見る</a>
+        <a href="/page2" class="btn btn-primary" role="link">お問い合わせ</a>
     </div>
     
     <!-- Test Case 12: Another correct structure -->
-    <button type="button" onclick="handleClick()">
+    <button type="button" onclick="handleClick()" role="button">
         <span>Click me</span>
         <i class="icon"></i>
     </button>

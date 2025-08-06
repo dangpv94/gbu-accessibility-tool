@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0] - 2025-01-08
+
+### Added
+- **Advanced Heading Structure Rules**: Enhanced heading structure validation with strict rules
+  - Only one `<h1>` element per page (converts extra h1 to h2)
+  - Proper heading hierarchy without level skipping (h2 → h3 → h4...)
+  - No duplicate headings in the same section/block
+  - Automatic empty heading text generation based on context
+- **Section-Aware Duplicate Detection**: Detects duplicate headings within the same section context
+- **Context-Based Text Generation**: Generates meaningful text for empty headings using surrounding content
+- **Comprehensive Heading Analysis**: Detailed analysis of heading structure issues with specific suggestions
+
+### Enhanced
+- **Heading Auto-Fix Logic**: More intelligent heading level corrections
+- **Section Context Detection**: Better detection of section boundaries for duplicate checking
+- **Error Reporting**: More detailed heading issue descriptions and suggestions
+
+### Fixed
+- **Heading Level Skipping**: Automatic correction of improper heading hierarchies
+- **Multiple H1 Elements**: Converts extra h1 elements to appropriate levels
+- **Empty Headings**: Fills empty headings with contextually relevant text
+- **Duplicate Headings**: Makes duplicate headings unique within sections
+
 ## [3.5.0] - 2025-01-08
 
 ### Added

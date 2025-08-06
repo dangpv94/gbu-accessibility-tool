@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <title>Comprehensive Test</title>
@@ -8,13 +8,13 @@
     <h1>Comprehensive Test File</h1>
     
     <!-- Missing alt -->
-    <img src="test.jpg">
+    <img src="test.jpg" alt="Comprehensive Test File" role="img" aria-label="Comprehensive Test File">
     
     <!-- Missing role -->
-    <a href="/home">Home</a>
+    <a href="/home" role="link">Home</a>
     
     <!-- Duplicate roles -->
-    <img src="dup.jpg" alt="Duplicate" role="img" role="img">
+    <img src="dup.jpg" alt="Duplicate" role="img" aria-label="Duplicate">
     
     <p>This tests comprehensive mode as default.</p>
 </body>

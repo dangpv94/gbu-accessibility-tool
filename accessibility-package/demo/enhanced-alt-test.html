@@ -16,34 +16,34 @@
         <section>
             <h2>Company Logo</h2>
             <p>Welcome to our innovative technology company</p>
-            <img src="company-logo.png" width="200" height="100">
+            <img src="company-logo.png" width="200" height="100" alt="Company Logo" role="img" aria-label="Company Logo">
         </section>
 
         <!-- Test Case 2: Empty alt attribute for content image -->
         <section>
             <h2>Product Showcase</h2>
             <p>Our latest smartphone with advanced features</p>
-            <img src="smartphone-product.jpg" alt="" width="300" height="200">
+            <img src="smartphone-product.jpg" alt="Product Showcase" width="300" height="200" role="img" aria-label="Product Showcase">
         </section>
 
         <!-- Test Case 3: Alt text too long -->
         <section>
             <h2>Team Photo</h2>
-            <img src="team-photo.jpg" alt="This is a very long description of our amazing team photo showing all the wonderful people who work at our company including engineers, designers, managers, and other staff members working together in our beautiful modern office space" width="400" height="300">
+            <img src="team-photo.jpg" alt="This is a very long description of our amazing team photo showing all the wonderful people who work at our company including engineers, designers, managers, and other staff members working together in our beautiful modern office space" width="400" height="300" role="img" aria-label="This is a very long description of our amazing team photo showing all the wonderful people who work at our company including engineers, designers, managers, and other staff members working together in our beautiful modern office space">
         </section>
 
         <!-- Test Case 4: Alt text with redundant words -->
         <section>
             <h2>Office Environment</h2>
-            <img src="office.jpg" alt="Image of office picture showing workplace photo" width="350" height="250">
+            <img src="office.jpg" alt="Image of office picture showing workplace photo" width="350" height="250" role="img" aria-label="Image of office picture showing workplace photo">
         </section>
 
         <!-- Test Case 5: Generic alt text -->
         <section>
             <h2>Learn More</h2>
             <p>Discover our services</p>
-            <a href="/services">
-                <img src="arrow-right.png" alt="Click here" width="24" height="24">
+            <a href="/services" role="link" aria-label="リンク" title="リンク">
+                <img src="arrow-right.png" alt="Click here" width="24" height="24" role="img" aria-label="Click here">
             </a>
         </section>
 
@@ -51,21 +51,21 @@
         <section>
             <h2>Sales Performance</h2>
             <p>Our sales increased by 25% this quarter</p>
-            <img src="sales-chart.png" alt="Chart" width="500" height="300">
+            <img src="sales-chart.png" alt="Chart" width="500" height="300" role="img" aria-label="Chart">
         </section>
 
         <!-- Test Case 7: Decorative image with content alt -->
         <section>
             <h2>Welcome Section</h2>
-            <img src="decorative-border.png" alt="Beautiful decorative border image" width="100%" height="20">
+            <img src="decorative-border.png" alt="Beautiful decorative border image" width="100%" height="20" role="img" aria-label="Beautiful decorative border image">
             <p>Welcome to our website</p>
         </section>
 
         <!-- Test Case 8: Functional icon without proper description -->
         <section>
             <h2>Contact Us</h2>
-            <button onclick="openChat()">
-                <img src="chat-icon.svg" alt="Icon" width="20" height="20">
+            <button onclick="openChat()" role="button" aria-label="ボタン" title="ボタン">
+                <img src="chat-icon.svg" alt="Icon" width="20" height="20" role="img" aria-label="Icon">
             </button>
         </section>
 
@@ -73,67 +73,67 @@
         <section>
             <h2>System Architecture</h2>
             <p>Our microservices architecture overview</p>
-            <img src="architecture-diagram.png" alt="Diagram" width="600" height="400">
+            <img src="architecture-diagram.png" alt="Diagram" width="600" height="400" role="img" aria-label="Diagram">
         </section>
 
         <!-- Test Case 10: Image with filename in alt text -->
         <section>
             <h2>Product Features</h2>
-            <img src="feature-screenshot.png" alt="feature-screenshot.png showing app interface" width="300" height="200">
+            <img src="feature-screenshot.png" alt="feature-screenshot.png showing app interface" width="300" height="200" role="img" aria-label="feature-screenshot.png showing app interface">
         </section>
 
         <!-- Test Case 11: Logo without "logo" in alt text -->
         <section>
             <h2>Partners</h2>
-            <img src="partner-logo.png" alt="Microsoft" width="150" height="75">
+            <img src="partner-logo.png" alt="Microsoft" width="150" height="75" role="img" aria-label="Microsoft">
         </section>
 
         <!-- Test Case 12: Chart with some data context -->
         <section>
             <h2>Growth Metrics</h2>
             <p>User growth from 1000 to 5000 users, showing 400% increase</p>
-            <img src="growth-chart.png" alt="User growth statistics" width="400" height="250">
+            <img src="growth-chart.png" alt="User growth statistics" width="400" height="250" role="img" aria-label="User growth statistics">
         </section>
 
         <!-- Test Case 13: Image in figure with figcaption -->
         <figure>
-            <img src="research-data.jpg" alt="" width="350" height="200">
+            <img src="research-data.jpg" alt="Gallery" width="350" height="200" role="img" aria-label="Gallery">
             <figcaption>Research findings from our latest study on user behavior patterns</figcaption>
         </figure>
 
         <!-- Test Case 14: Multiple images with similar generic alt text -->
         <section>
             <h2>Gallery</h2>
-            <img src="photo1.jpg" alt="Photo" width="200" height="150">
-            <img src="photo2.jpg" alt="Photo" width="200" height="150">
-            <img src="photo3.jpg" alt="Photo" width="200" height="150">
+            <img src="photo1.jpg" alt="Photo" width="200" height="150" role="img" aria-label="Photo">
+            <img src="photo2.jpg" alt="Photo" width="200" height="150" role="img" aria-label="Photo">
+            <img src="photo3.jpg" alt="Photo" width="200" height="150" role="img" aria-label="Photo">
         </section>
 
         <!-- Test Case 15: Image with inconsistent alt and aria-label -->
         <section>
             <h2>Navigation</h2>
-            <img src="home-icon.png" alt="Home" aria-label="Go to homepage" width="32" height="32">
+            <img src="home-icon.png" alt="Home" aria-label="Go to homepage" width="32" height="32" role="img">
         </section>
 
         <!-- Test Case 16: Food image in restaurant context -->
         <section>
             <h2>Today's Special</h2>
             <p>Delicious authentic Japanese cuisine</p>
-            <img src="sushi-plate.jpg" alt="" width="300" height="200">
+            <img src="sushi-plate.jpg" alt="Todays Special" width="300" height="200" role="img" aria-label="Todays Special">
         </section>
 
         <!-- Test Case 17: Technology device in business context -->
         <section>
             <h2>Enterprise Solutions</h2>
             <p>Professional laptop for business productivity</p>
-            <img src="business-laptop.jpg" width="250" height="180">
+            <img src="business-laptop.jpg" width="250" height="180" alt="Enterprise Solutions" role="img" aria-label="Enterprise Solutions">
         </section>
 
         <!-- Test Case 18: Nature image in lifestyle context -->
         <section>
             <h2>Wellness Program</h2>
             <p>Find peace and tranquility in nature</p>
-            <img src="peaceful-forest.jpg" alt="" width="400" height="250">
+            <img src="peaceful-forest.jpg" alt="Wellness Program" width="400" height="250" role="img" aria-label="Wellness Program">
         </section>
     </main>
 

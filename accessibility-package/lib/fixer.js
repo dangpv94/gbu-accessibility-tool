@@ -5088,6 +5088,381 @@ class AccessibilityFixer {
     return fallbacks[lang] || fallbacks.en;
   }
 
+  /**
+   * Fix heading structure issues
+   * Ensures proper heading hierarchy: only one h1, proper nesting, no duplicates in same section
+   */
+  async fixHeadingStructure(directory = '.') {
+    console.log(chalk.blue('📑 Fixing heading structure...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    let totalFixesApplied = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const analysis = this.analyzeHeadingStructure(content);
+        
+        if (analysis.issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          analysis.issues.forEach(issue => {
+            console.log(chalk.yellow(`  📑 ${issue.type}: ${issue.description}`));
+            console.log(chalk.gray(`    💡 ${issue.suggestion}`));
+            totalIssuesFound++;
+          });
+        }
+        
+        let fixed = content;
+        let fixesApplied = 0;
+        
+        if (this.config.autoFixHeadings) {
+          const fixResult = this.fixHeadingStructureInContent(content, analysis);
+          fixed = fixResult.content;
+          fixesApplied = fixResult.fixes;
+          totalFixesApplied += fixesApplied;
+          
+          if (fixesApplied > 0) {
+            console.log(chalk.green(`✅ Fixed heading structure in: ${file} (${fixesApplied} fixes)`));
+          }
+        }
+        
+        if (fixed !== content) {
+          if (this.config.backupFiles) {
+            await fs.writeFile(`${file}.backup`, content);
+          }
+          
+          if (!this.config.dryRun) {
+            await fs.writeFile(file, fixed);
+          }
+          
+          results.push({ 
+            file, 
+            status: 'fixed', 
+            issues: analysis.issues.length,
+            fixes: fixesApplied
+          });
+        } else {
+          results.push({ 
+            file, 
+            status: 'no-change', 
+            issues: analysis.issues.length,
+            fixes: 0
+          });
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} heading issues across ${results.length} files`));
+    if (this.config.autoFixHeadings) {
+      console.log(chalk.blue(`   Fixed ${totalFixesApplied} heading issues automatically`));
+    } else {
+      console.log(chalk.gray('💡 Use --auto-fix-headings option to enable automatic fixes'));
+    }
+    
+    return results;
+  }
+
+  /**
+   * Analyze heading structure for issues
+   */
+  analyzeHeadingStructure(content) {
+    const issues = [];
+    const headings = [];
+    
+    // Extract all headings with their positions and context
+    const headingRegex = /<h([1-6])([^>]*)>(.*?)<\/h[1-6]>/gi;
+    let match;
+    let headingIndex = 0;
+    
+    while ((match = headingRegex.exec(content)) !== null) {
+      headingIndex++;
+      const level = parseInt(match[1]);
+      const attributes = match[2];
+      const text = match[3].replace(/<[^>]*>/g, '').trim();
+      const fullMatch = match[0];
+      const position = match.index;
+      
+      // Find the section context (look for parent elements)
+      const beforeContent = content.substring(0, position);
+      const sectionContext = this.findSectionContext(beforeContent);
+      
+      headings.push({
+        level,
+        text,
+        attributes,
+        fullMatch,
+        position,
+        index: headingIndex,
+        sectionContext
+      });
+    }
+    
+    if (headings.length === 0) {
+      return { issues, headings };
+    }
+    
+    // Check for multiple h1 elements
+    const h1Elements = headings.filter(h => h.level === 1);
+    if (h1Elements.length > 1) {
+      issues.push({
+        type: 'Multiple h1 elements',
+        description: `Found ${h1Elements.length} h1 elements, should have only one`,
+        suggestion: 'Convert extra h1 elements to h2-h6 as appropriate',
+        severity: 'error',
+        headings: h1Elements,
+        fix: 'convert-extra-h1'
+      });
+    } else if (h1Elements.length === 0) {
+      issues.push({
+        type: 'Missing h1 element',
+        description: 'Page should have exactly one h1 element',
+        suggestion: 'Convert the first heading to h1 or add an h1 element',
+        severity: 'error',
+        fix: 'add-missing-h1'
+      });
+    }
+    
+    // Check for heading level skipping
+    for (let i = 1; i < headings.length; i++) {
+      const current = headings[i];
+      const previous = headings[i - 1];
+      
+      if (current.level > previous.level + 1) {
+        issues.push({
+          type: 'Heading level skip',
+          description: `Heading level jumps from h${previous.level} to h${current.level}`,
+          suggestion: `Use h${previous.level + 1} instead of h${current.level}`,
+          severity: 'warning',
+          heading: current,
+          previousHeading: previous,
+          fix: 'fix-level-skip'
+        });
+      }
+    }
+    
+    // Check for empty headings
+    headings.forEach(heading => {
+      if (!heading.text || heading.text.length === 0) {
+        issues.push({
+          type: 'Empty heading',
+          description: `Heading ${heading.index} (h${heading.level}) is empty`,
+          suggestion: 'Add descriptive text to the heading or remove it',
+          severity: 'warning',
+          heading,
+          fix: 'fix-empty-heading'
+        });
+      }
+    });
+    
+    // Check for duplicate headings in the same section
+    const sectionGroups = {};
+    headings.forEach(heading => {
+      const sectionKey = heading.sectionContext || 'root';
+      if (!sectionGroups[sectionKey]) {
+        sectionGroups[sectionKey] = [];
+      }
+      sectionGroups[sectionKey].push(heading);
+    });
+    
+    Object.entries(sectionGroups).forEach(([section, sectionHeadings]) => {
+      const textGroups = {};
+      sectionHeadings.forEach(heading => {
+        if (heading.text) {
+          const normalizedText = heading.text.toLowerCase().trim();
+          if (!textGroups[normalizedText]) {
+            textGroups[normalizedText] = [];
+          }
+          textGroups[normalizedText].push(heading);
+        }
+      });
+      
+      Object.entries(textGroups).forEach(([text, duplicates]) => {
+        if (duplicates.length > 1 && duplicates[0].level === duplicates[1].level) {
+          issues.push({
+            type: 'Duplicate heading',
+            description: `Duplicate h${duplicates[0].level} heading: "${text}"`,
+            suggestion: 'Make heading text unique or merge content',
+            severity: 'warning',
+            headings: duplicates,
+            section,
+            fix: 'fix-duplicate-heading'
+          });
+        }
+      });
+    });
+    
+    return { issues, headings };
+  }
+
+  /**
+   * Find section context for a heading
+   */
+  findSectionContext(beforeContent) {
+    // Look for common section elements
+    const sectionPatterns = [
+      /<section[^>]*>/gi,
+      /<article[^>]*>/gi,
+      /<main[^>]*>/gi,
+      /<div[^>]*class[^>]*section[^>]*>/gi,
+      /<div[^>]*id[^>]*section[^>]*>/gi
+    ];
+    
+    let lastSectionMatch = null;
+    let lastSectionPosition = -1;
+    
+    sectionPatterns.forEach(pattern => {
+      let match;
+      pattern.lastIndex = 0; // Reset regex
+      while ((match = pattern.exec(beforeContent)) !== null) {
+        if (match.index > lastSectionPosition) {
+          lastSectionPosition = match.index;
+          lastSectionMatch = match[0];
+        }
+      }
+    });
+    
+    return lastSectionMatch ? `section_${lastSectionPosition}` : 'root';
+  }
+
+  /**
+   * Fix heading structure issues in content
+   */
+  fixHeadingStructureInContent(content, analysis) {
+    let fixed = content;
+    let fixesApplied = 0;
+    
+    if (!analysis || !analysis.issues) {
+      return { content: fixed, fixes: fixesApplied };
+    }
+    
+    // Sort issues by position (from end to start to avoid position shifts)
+    const sortedIssues = analysis.issues
+      .filter(issue => issue.fix)
+      .sort((a, b) => {
+        const posA = a.heading?.position || a.headings?.[0]?.position || 0;
+        const posB = b.heading?.position || b.headings?.[0]?.position || 0;
+        return posB - posA;
+      });
+    
+    sortedIssues.forEach(issue => {
+      switch (issue.fix) {
+        case 'convert-extra-h1':
+          // Convert extra h1 elements to h2
+          if (issue.headings && issue.headings.length > 1) {
+            // Keep the first h1, convert others to h2
+            for (let i = 1; i < issue.headings.length; i++) {
+              const heading = issue.headings[i];
+              const newHeading = heading.fullMatch.replace(/h1/gi, 'h2');
+              fixed = fixed.replace(heading.fullMatch, newHeading);
+              console.log(chalk.yellow(`  📑 Converted extra h1 to h2: "${heading.text}"`));
+              fixesApplied++;
+            }
+          }
+          break;
+          
+        case 'add-missing-h1':
+          // Convert the first heading to h1
+          if (analysis.headings && analysis.headings.length > 0) {
+            const firstHeading = analysis.headings[0];
+            const newHeading = firstHeading.fullMatch.replace(
+              new RegExp(`h${firstHeading.level}`, 'gi'), 
+              'h1'
+            );
+            fixed = fixed.replace(firstHeading.fullMatch, newHeading);
+            console.log(chalk.yellow(`  📑 Converted first heading to h1: "${firstHeading.text}"`));
+            fixesApplied++;
+          }
+          break;
+          
+        case 'fix-level-skip':
+          // Fix heading level skipping
+          if (issue.heading && issue.previousHeading) {
+            const correctLevel = issue.previousHeading.level + 1;
+            const newHeading = issue.heading.fullMatch.replace(
+              new RegExp(`h${issue.heading.level}`, 'gi'),
+              `h${correctLevel}`
+            );
+            fixed = fixed.replace(issue.heading.fullMatch, newHeading);
+            console.log(chalk.yellow(`  📑 Fixed level skip: h${issue.heading.level} → h${correctLevel} for "${issue.heading.text}"`));
+            fixesApplied++;
+          }
+          break;
+          
+        case 'fix-empty-heading':
+          // Add text to empty headings based on context
+          if (issue.heading) {
+            const contextText = this.generateHeadingText(issue.heading, content);
+            const newHeading = issue.heading.fullMatch.replace(
+              /(<h[1-6][^>]*>)(\s*)(.*?)(\s*)(<\/h[1-6]>)/i,
+              `$1${contextText}$5`
+            );
+            fixed = fixed.replace(issue.heading.fullMatch, newHeading);
+            console.log(chalk.yellow(`  📑 Added text to empty heading: "${contextText}"`));
+            fixesApplied++;
+          }
+          break;
+          
+        case 'fix-duplicate-heading':
+          // Make duplicate headings unique by adding numbers
+          if (issue.headings && issue.headings.length > 1) {
+            for (let i = 1; i < issue.headings.length; i++) {
+              const heading = issue.headings[i];
+              const newText = `${heading.text} (${i + 1})`;
+              const newHeading = heading.fullMatch.replace(
+                heading.text,
+                newText
+              );
+              fixed = fixed.replace(heading.fullMatch, newHeading);
+              console.log(chalk.yellow(`  📑 Made duplicate heading unique: "${newText}"`));
+              fixesApplied++;
+            }
+          }
+          break;
+      }
+    });
+    
+    return { content: fixed, fixes: fixesApplied };
+  }
+
+  /**
+   * Generate appropriate text for empty headings based on context
+   */
+  generateHeadingText(heading, content) {
+    // Look for context around the heading
+    const position = heading.position;
+    const beforeText = content.substring(Math.max(0, position - 200), position);
+    const afterText = content.substring(position + heading.fullMatch.length, position + heading.fullMatch.length + 200);
+    
+    // Extract meaningful words from surrounding content
+    const contextWords = (beforeText + ' ' + afterText)
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 3 && !/^\d+$/.test(word))
+      .slice(0, 3);
+    
+    if (contextWords.length > 0) {
+      return contextWords.join(' ');
+    }
+    
+    // Fallback based on heading level
+    const levelNames = {
+      1: 'Main Content',
+      2: 'Section',
+      3: 'Subsection', 
+      4: 'Details',
+      5: 'Information',
+      6: 'Notes'
+    };
+    
+    return levelNames[heading.level] || 'Content';
+  }
+
   async findHtmlFiles(directory) {
     const files = [];
     
