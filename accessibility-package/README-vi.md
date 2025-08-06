@@ -18,7 +18,8 @@
 - 🔘 **Button Names** - Sửa buttons rỗng và input buttons không có tên
 - 🔗 **Link Names** - Sửa links rỗng và phát hiện text generic
 - 🏛️ **Landmarks** - Thêm main và navigation landmarks thiếu
-- 📑 **Phân tích Heading** - Phân tích cấu trúc heading với gợi ý (không tự động sửa)
+- 📑 **Phân tích và Sửa Heading** - Phân tích cấu trúc heading với tùy chọn tự động sửa `--auto-fix-headings`
+- 🎯 **Nested Controls Detection** - Phát hiện và sửa các control tương tác lồng nhau
 - 🔍 **Broken Links Detection** - Phát hiện liên kết bị hỏng và tài nguyên 404
 - 🧹 **Dọn dẹp Duplicate** - Loại bỏ role attributes trùng lặp
 
@@ -148,7 +149,8 @@ Chế độ sửa lỗi:
   --buttons-only           Sửa button names + dọn dẹp
   --links-only             Sửa link names + dọn dẹp
   --landmarks-only         Sửa landmarks + dọn dẹp
-  --headings-only          Phân tích cấu trúc heading (không tự động sửa)
+  --headings-only          Phân tích cấu trúc heading với tùy chọn tự động sửa
+  --auto-fix-headings      Bật tự động sửa lỗi heading structure
   --links-check            Kiểm tra liên kết bị hỏng và tài nguyên 404
   --cleanup-only           Chỉ dọn dẹp role attributes trùng lặp
 
@@ -178,6 +180,8 @@ gbu-a11y -l en ./public
 gbu-a11y --alt-only          # Sửa alt attributes + dọn dẹp
 gbu-a11y --forms-only        # Sửa form labels + dọn dẹp
 gbu-a11y --buttons-only      # Sửa button names + dọn dẹp
+gbu-a11y --headings-only     # Phân tích heading structure
+gbu-a11y --headings-only --auto-fix-headings  # Tự động sửa heading structure
 gbu-a11y --links-check       # Kiểm tra liên kết bị hỏng + dọn dẹp
 
 # Tính năng enhanced alt attribute
@@ -308,7 +312,12 @@ console.log("Hoàn thành sửa lỗi với enhanced features:", results);
 
 - **Lang attributes thiếu** → Phát hiện ngôn ngữ tự động
 - **Landmark thiếu** → Main và navigation landmarks
-- **Cấu trúc heading** → Phân tích và khuyến nghị
+- **Cấu trúc heading** → Phân tích và tự động sửa với `--auto-fix-headings`
+  - Sửa multiple h1 elements
+  - Sửa heading level skipping (h2 → h4)
+  - Thêm text cho empty headings
+  - Sửa duplicate headings
+- **Nested interactive controls** → Phát hiện và sửa controls lồng nhau
 - **Role attributes** → Gán role tuân thủ WCAG
 
 ### Kiểm tra liên kết

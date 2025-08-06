@@ -17,7 +17,8 @@
 - 🔘 **Button Names** - Fix empty buttons and input buttons without names
 - 🔗 **Link Names** - Fix empty links and detect generic link text
 - 🏛️ **Landmarks** - Add missing main and navigation landmarks
-- 📑 **Heading Analysis** - Analyze heading structure with suggestions (no auto-fix)
+- 📑 **Heading Analysis & Auto-Fix** - Analyze heading structure with optional auto-fix using `--auto-fix-headings`
+- 🎯 **Nested Controls Detection** - Detect and fix nested interactive controls
 - 🔍 **Broken Links Detection** - Detect broken links and 404 resources
 - 🧹 **Duplicate Cleanup** - Remove duplicate role attributes
 
@@ -145,7 +146,8 @@ Fix Modes:
   --buttons-only           Fix button names + cleanup
   --links-only             Fix link names + cleanup
   --landmarks-only         Fix landmarks + cleanup
-  --headings-only          Analyze heading structure (no auto-fix)
+  --headings-only          Analyze heading structure with optional auto-fix
+  --auto-fix-headings      Enable automatic heading structure fixes
   --links-check            Check for broken links and 404 resources
   --cleanup-only           Only cleanup duplicate role attributes
 
@@ -175,6 +177,8 @@ gbu-a11y -l en ./public
 gbu-a11y --alt-only          # Fix alt attributes + cleanup
 gbu-a11y --forms-only        # Fix form labels + cleanup
 gbu-a11y --buttons-only      # Fix button names + cleanup
+gbu-a11y --headings-only     # Analyze heading structure
+gbu-a11y --headings-only --auto-fix-headings  # Auto-fix heading structure
 gbu-a11y --links-check       # Check broken links + cleanup
 
 # Enhanced alt attribute features
@@ -298,7 +302,12 @@ console.log('Accessibility fixes completed with enhanced features:', results);
 ### Document Structure
 - **Missing lang attributes** → Automatic language detection
 - **Missing landmarks** → Main and navigation landmarks
-- **Heading structure** → Analysis and recommendations
+- **Heading structure** → Analysis and auto-fix with `--auto-fix-headings`
+  - Fix multiple h1 elements
+  - Fix heading level skipping (h2 → h4)
+  - Add text to empty headings
+  - Fix duplicate headings
+- **Nested interactive controls** → Detect and fix nested controls
 - **Role attributes** → WCAG-compliant role assignments
 
 ### Link Validation
