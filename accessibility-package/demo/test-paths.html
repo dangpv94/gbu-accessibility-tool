@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Test Absolute Paths</title>
+</head>
+<body>
+    <h1>Test Absolute Path Resolution</h1>
+    
+    <!-- Absolute paths from project root -->
+    <img src="/demo/unused-image.png" alt="Should work - file exists">
+    <img src="/demo/nonexistent-image.jpg" alt="Should fail - file doesn't exist">
+    
+    <!-- Relative paths -->
+    <img src="unused-image.png" alt="Should work - relative existing file">
+    <img src="nonexistent-relative.jpg" alt="Should fail - relative nonexistent file">
+    
+    <!-- CSS and JS absolute paths -->
+    <link rel="stylesheet" href="/demo/existing-style.css">
+    <link rel="stylesheet" href="/demo/nonexistent-style.css">
+    <script src="/demo/existing-script.js"></script>
+    <script src="/demo/nonexistent-script.js"></script>
+</body>
+</html>

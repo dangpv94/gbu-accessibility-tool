@@ -1,10 +1,37 @@
-*.backup
-test-*
-.DS_Store
+# Development and demo files
+demo/
+test*.js
+example.js
+
+# Documentation files not needed for end users
+ENHANCED_ALT_FEATURES.md
+NPM_DEPLOYMENT.md
+DEPLOYMENT_GUIDE.md
+
+# Development tools and configs
 .vscode/
 .idea/
 *.log
+*.backup
+.DS_Store
+*.tgz
+
+# Node modules and cache
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Test files and coverage
+test-*
 coverage/
 .nyc_output/
-DEPLOYMENT_GUIDE.md
-*.tgz
+
+# Git files
+.git/
+.gitignore

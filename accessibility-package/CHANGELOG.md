@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.1] - 2025-10-04
+
+### Changed
+- **Package Cleanup**: Removed unnecessary files and folders from npm package
+  - Excluded `demo/` folder from published package (development examples only)
+  - Excluded `ENHANCED_ALT_FEATURES.md` from published package (internal documentation)  
+  - Excluded `example.js` and test files from published package
+  - Updated `.npmignore` and `package.json` files field to ensure clean deployments
+  - Reduced package size from ~3MB to ~330KB (unpacked) by removing demo assets
+
+### Fixed
+- **Absolute Path Resolution**: Fixed bug in 404 resources checking where absolute paths (e.g., `/demo/image.png`) were incorrectly resolved from HTML file directory instead of project root
+
 ## [3.8.0] - 2025-10-03
 
 ### Added

@@ -3106,13 +3106,14 @@ class AccessibilityFixer {
   async checkLocalFile(url, baseDir, resourceType, elementType) {
     const path = require('path');
     
-    // Handle relative URLs
+    // Handle different URL types
     let filePath;
     if (url.startsWith('/')) {
-      // Absolute path from web root - we'll check relative to baseDir
-      filePath = path.join(baseDir, url.substring(1));
+      // Absolute path from web root - find project root and resolve from there
+      const projectRoot = this.findProjectRoot(baseDir);
+      filePath = path.join(projectRoot, url.substring(1));
     } else {
-      // Relative path
+      // Relative path - resolve relative to current HTML file directory
       filePath = path.resolve(baseDir, url);
     }
     
@@ -3126,9 +3127,39 @@ class AccessibilityFixer {
         suggestion: `Create the missing file or update the ${resourceType.toLowerCase()} path`,
         url: url,
         filePath: filePath,
+        resolvedPath: filePath,
         resourceType: resourceType
       };
     }
+  }
+
+  // Helper method to find project root directory
+  findProjectRoot(startDir) {
+    const path = require('path');
+    const fs = require('fs');
+    
+    let currentDir = startDir;
+    const root = path.parse(currentDir).root;
+    
+    // Look for common project root indicators
+    while (currentDir !== root) {
+      // Check for package.json, .git, or other project indicators
+      const packageJsonPath = path.join(currentDir, 'package.json');
+      const gitPath = path.join(currentDir, '.git');
+      const nodeModulesPath = path.join(currentDir, 'node_modules');
+      
+      if (fs.existsSync(packageJsonPath) || fs.existsSync(gitPath) || fs.existsSync(nodeModulesPath)) {
+        return currentDir;
+      }
+      
+      // Move up one directory
+      const parentDir = path.dirname(currentDir);
+      if (parentDir === currentDir) break; // Reached filesystem root
+      currentDir = parentDir;
+    }
+    
+    // If no project root found, use the original baseDir (fallback)
+    return startDir;
   }
 
   // Analyze headings (no auto-fix, only suggestions)

@@ -1,6 +1,6 @@
 {
   "name": "gbu-accessibility-package",
-  "version": "3.8.0",
+  "version": "3.8.1",
   "description": "Comprehensive accessibility fixes and project optimization for HTML files. Smart context-aware alt text generation, form labels, button names, link names, landmarks, heading analysis, WCAG-compliant role attributes, unused files detection, dead code analysis, broken external links detection, and missing local resources detection. Covers major axe DevTools issues with individual fix modes.",
   "main": "index.js",
   "bin": {
@@ -82,16 +82,14 @@
   },
   "files": [
     "lib/",
+    "bin/",
     "index.js",
     "cli.js",
-    "example.js",
-    "demo/",
     "README.md",
     "README-vi.md",
     "CHANGELOG.md",
     "QUICK_START.md",
     "PACKAGE_SUMMARY.md",
-    "ENHANCED_ALT_FEATURES.md",
     "LICENSE"
   ],
   "dependencies": {
