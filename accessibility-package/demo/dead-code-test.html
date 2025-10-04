@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Dead Code Test</title>
+    <link rel="stylesheet" href="dead-code-test.css">
+    <script src="dead-code-test.js"></script>
+</head>
+<body>
+    <!-- Uses .header and .content classes from CSS -->
+    <div class="header">
+        <h1>Dead Code Analysis Test</h1>
+    </div>
+    
+    <div class="content">
+        <p>This page uses some CSS classes and JavaScript functions, but not all of them.</p>
+        
+        <!-- Button that calls showAlert() function -->
+        <button onclick="showAlert()" role="button">Click me (uses showAlert function)</button>
+        
+        <!-- Button with event handler -->
+        <button onclick="handleClick(event)" role="button">Handle Click</button>
+        
+        <p>Run <code>gbu-a11y --dead-code</code> to analyze which CSS rules and JavaScript functions are unused.</p>
+        
+        <!-- Note: The following are used:
+             CSS: .header, .content, h1, p (tag selectors)
+             JS: showAlert(), handleClick(), and their dependencies
+             
+             The following should be detected as unused:
+             CSS: .sidebar, .popup, .modal-overlay, article, aside
+             JS: unusedFunction(), complexUnusedFunction(), unusedVariable, etc.
+        -->
+    </div>
+</body>
+</html>

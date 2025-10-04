@@ -20,7 +20,11 @@
 - 🏛️ **Landmarks** - Thêm main và navigation landmarks thiếu
 - 📑 **Phân tích và Sửa Heading** - Phân tích cấu trúc heading với tùy chọn tự động sửa `--auto-fix-headings`
 - 🎯 **Nested Controls Detection** - Phát hiện và sửa các control tương tác lồng nhau
-- 🔍 **Broken Links Detection** - Phát hiện liên kết bị hỏng và tài nguyên 404
+- 🔍 **Broken Links Detection** - Phát hiện liên kết external bị hỏng
+- 📁 **404 Resources Detection** - Phát hiện tài nguyên local bị thiếu (hình ảnh, CSS, JS, v.v.)
+- 🗂️ **Unused Files Detection** - Tìm file không được tham chiếu ở đâu trong dự án
+- ☠️ **Dead Code Analysis** - Phát hiện CSS rules và JavaScript functions không sử dụng
+- 📏 **File Size Analysis** - Kiểm tra dung lượng file và đề xuất tối ưu hóa
 - 🧹 **Dọn dẹp Duplicate** - Loại bỏ role attributes trùng lặp
 
 ### 🚀 **Tính năng Enhanced Alt Attribute (Đã tích hợp!)**
@@ -151,7 +155,12 @@ Chế độ sửa lỗi:
   --landmarks-only         Sửa landmarks + dọn dẹp
   --headings-only          Phân tích cấu trúc heading với tùy chọn tự động sửa
   --auto-fix-headings      Bật tự động sửa lỗi heading structure
-  --links-check            Kiểm tra liên kết bị hỏng và tài nguyên 404
+  --links-check            Kiểm tra liên kết bị hỏng và tài nguyên 404 (toàn diện, không tự động sửa)
+  --broken-links           Chỉ kiểm tra liên kết external bị hỏng (không tự động sửa)
+  --404-resources          Chỉ kiểm tra tài nguyên local bị thiếu (không tự động sửa)
+  --unused-files           Kiểm tra file không sử dụng trong dự án
+  --dead-code              Kiểm tra dead code trong CSS và JavaScript
+  --file-size, --size-check Kiểm tra dung lượng file và đề xuất tối ưu hóa
   --cleanup-only           Chỉ dọn dẹp role attributes trùng lặp
 
 Tùy chọn Enhanced Alt:
@@ -182,7 +191,12 @@ gbu-a11y --forms-only        # Sửa form labels + dọn dẹp
 gbu-a11y --buttons-only      # Sửa button names + dọn dẹp
 gbu-a11y --headings-only     # Phân tích heading structure
 gbu-a11y --headings-only --auto-fix-headings  # Tự động sửa heading structure
-gbu-a11y --links-check       # Kiểm tra liên kết bị hỏng + dọn dẹp
+gbu-a11y --links-check       # Kiểm tra liên kết bị hỏng và tài nguyên thiếu + dọn dẹp
+gbu-a11y --broken-links      # Chỉ kiểm tra liên kết external bị hỏng + dọn dẹp
+gbu-a11y --404-resources     # Chỉ kiểm tra tài nguyên local bị thiếu + dọn dẹp
+gbu-a11y --unused-files      # Kiểm tra file không sử dụng trong dự án
+gbu-a11y --dead-code         # Kiểm tra dead CSS và JavaScript code
+gbu-a11y --file-size         # Kiểm tra dung lượng file và đề xuất tối ưu hóa
 
 # Tính năng enhanced alt attribute
 gbu-a11y --enhanced-alt                                    # Chế độ enhanced cơ bản
@@ -283,6 +297,15 @@ await fixer.fixEmptyAltAttributes("./src");
 // Không cần import thêm class riêng biệt
 const results = await fixer.fixAllAccessibilityIssues("./src");
 console.log("Hoàn thành sửa lỗi với enhanced features:", results);
+
+// Mới: Kiểm tra file không sử dụng
+await fixer.checkUnusedFiles('./src');
+
+// Mới: Kiểm tra dead code
+await fixer.checkDeadCode('./src');
+
+// Mới: Kiểm tra dung lượng file
+await fixer.checkFileSizes('./src');
 ```
 
 ## 🎯 Những gì được sửa
@@ -322,10 +345,31 @@ console.log("Hoàn thành sửa lỗi với enhanced features:", results);
 
 ### Kiểm tra liên kết
 
-- **Liên kết bị hỏng** → Phát hiện HTTP 404, 500, timeout
-- **Tài nguyên không tồn tại** → Kiểm tra file local thiếu
-- **URL không hợp lệ** → Phát hiện định dạng URL sai
-- **Liên kết chậm** → Cảnh báo timeout và phản hồi chậm
+- **Liên kết External bị hỏng** → Phát hiện HTTP 404, 500, timeout trên URL external
+  - URL không hợp lệ → Phát hiện định dạng URL sai
+  - Liên kết chậm → Cảnh báo timeout và phản hồi chậm
+  - Lỗi mạng → Kết nối thất bại và host không thể tiếp cận
+- **Tài nguyên 404 bị thiếu** → Kiểm tra file local bị thiếu
+  - Hình ảnh (img src), file CSS (link href), file JavaScript (script src)
+  - Video/audio sources, tài nguyên local khác
+  - Kiểm tra đường dẫn relative và absolute
+
+### Tối ưu hóa dự án
+
+- **File không sử dụng** → Phát hiện file không được tham chiếu ở đâu trong dự án
+  - Hình ảnh, CSS, JavaScript, HTML files
+  - Phân tích tham chiếu file local
+  - Phát hiện heuristic với khuyến nghị xem xét thủ công
+- **Phân tích Dead Code** → Tìm CSS rules và JavaScript functions không sử dụng
+  - CSS selectors không được sử dụng trong HTML
+  - JavaScript functions không bao giờ được gọi
+  - Variables được khai báo nhưng không sử dụng
+  - Smart skipping các patterns động
+- **Phân tích dung lượng file** → Kiểm tra kích thước file và đề xuất tối ưu hóa
+  - Phát hiện file lớn vượt ngưỡng khuyến nghị
+  - Đề xuất tối ưu hóa theo từng loại file (hình ảnh, CSS, JS, v.v.)
+  - Thống kê dung lượng theo loại file
+  - Top 10 file có dung lượng lớn nhất
 
 ## 🔧 Quản lý Package
 

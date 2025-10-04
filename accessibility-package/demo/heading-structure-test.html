@@ -13,22 +13,22 @@
     <p>Main content of the page</p>
     
     <!-- Test Case 2: Multiple h1 elements -->
-    <h1>First h1 (should stay)</h1>
-    <h1>Second h1 (should become h2)</h1>
-    <h1>Third h1 (should become h2)</h1>
+    <h2>First h2 (should stay)</h2>
+    <h2>Second h2 (should become h2)</h2>
+    <h2>Third h2 (should become h2)</h2>
     
     <!-- Test Case 3: Level skipping -->
     <h2>Section heading</h2>
-    <h4>Subsection (skips h3 - should become h3)</h4>
-    <h6>Sub-subsection (skips h4, h5 - should become h4)</h6>
+    <h3>Subsection (skips h3 - should become h3)</h3>
+    <h4>Sub-subsection (skips h4, h4 - should become h4)</h4>
     
     <!-- Test Case 4: Empty headings -->
-    <h3></h3>
-    <h4>   </h4>
-    <h5><span></span></h5>
+    <h3>Details should Service</h3>
+    <h4>dings with context</h4>
+    <h5>Subsection skips should</h5>
     
     <!-- Test Case 5: Duplicate headings -->
-    <h2>Products</h2>
+    <h2>Products (2)</h2>
     <p>Some content about products</p>
     <h2>Products</h2>
     <p>More content about products</p>
@@ -41,19 +41,19 @@
     
     <!-- Test Case 7: Complex nesting with issues -->
     <h2>Services</h2>
-    <h5>Service 1 (should be h3)</h5>
-    <h6>Details (should be h4)</h6>
+    <h3>Service 1 (should be h3)</h3>
+    <h4>Details (should be h4)</h4>
     <h3>Service 2 (correct)</h3>
-    <h5>More details (should be h4)</h5>
+    <h4>More details (should be h4)</h4>
     
     <!-- Test Case 8: Empty headings with context -->
     <div class="section">
-        <h3></h3>
+        <h3>Section heading Subsection</h3>
         <p>This section talks about our company history and achievements.</p>
     </div>
     
     <div class="product-info">
-        <h4>   </h4>
+        <h4>ection heading Subsection</h4>
         <p>Our flagship product offers innovative solutions for modern businesses.</p>
     </div>
 </body>

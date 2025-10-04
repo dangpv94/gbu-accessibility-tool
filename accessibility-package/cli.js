@@ -30,6 +30,9 @@ const options = {
   headingsOnly: false,
   dlOnly: false,
   brokenLinksOnly: false,
+  unusedFilesOnly: false,
+  deadCodeOnly: false,
+  fileSizeOnly: false,
   // Enhanced alt options
   enhancedAlt: false,
   altCreativity: 'balanced', // conservative, balanced, creative
@@ -104,8 +107,24 @@ for (let i = 0; i < args.length; i++) {
       options.dlOnly = true;
       break;
     case '--links-check':
+      options.linksCheckOnly = true;
+      break;
     case '--broken-links':
       options.brokenLinksOnly = true;
+      break;
+    case '--404-resources':
+    case '--missing-resources':
+      options.missingResourcesOnly = true;
+      break;
+    case '--unused-files':
+      options.unusedFilesOnly = true;
+      break;
+    case '--dead-code':
+      options.deadCodeOnly = true;
+      break;
+    case '--file-size':
+    case '--size-check':
+      options.fileSizeOnly = true;
       break;
     case '--auto-fix-headings':
       options.autoFixHeadings = true;
@@ -156,6 +175,11 @@ Options:
   --landmarks-only         Fix landmarks + cleanup
   --headings-only          Analyze heading structure (no auto-fix)
   --links-check            Check for broken links and 404 resources (no auto-fix)
+  --broken-links           Check for broken external links only (no auto-fix)
+  --404-resources          Check for missing local resources only (no auto-fix)
+  --unused-files           Check for unused files in project (no auto-fix)
+  --dead-code              Check for dead code in CSS and JavaScript (no auto-fix)
+  --file-size, --size-check Check file sizes and suggest optimizations (no auto-fix)
   --enhanced-alt           Use enhanced alt attribute analysis and generation
   --alt-creativity <mode>  Alt text creativity: conservative, balanced, creative (default: balanced)
   --include-emotions       Include emotional descriptors in alt text
@@ -186,6 +210,11 @@ Examples:
   node cli.js --landmarks-only         # Fix landmarks + cleanup
   node cli.js --headings-only          # Analyze heading structure only
   node cli.js --links-check            # Check for broken links and 404s
+  node cli.js --broken-links           # Check for broken external links only
+  node cli.js --404-resources          # Check for missing local resources only
+  node cli.js --unused-files           # Check for unused files in project
+  node cli.js --dead-code              # Check for dead CSS and JavaScript code
+  node cli.js --file-size              # Check file sizes and suggest optimizations
   node cli.js --cleanup-only           # Only cleanup duplicate roles
   node cli.js ./src                    # Fix src directory (comprehensive)
   node cli.js -l en --dry-run ./dist   # Preview comprehensive fixes in English
@@ -247,7 +276,7 @@ async function main() {
     // Handle different modes - All modes now include cleanup
     if (options.cleanupOnly || options.altOnly || options.langOnly || options.roleOnly || 
         options.formsOnly || options.nestedOnly || options.buttonsOnly || options.linksOnly || options.landmarksOnly || 
-        options.headingsOnly || options.dlOnly || options.brokenLinksOnly) {
+        options.headingsOnly || options.dlOnly || options.linksCheckOnly || options.brokenLinksOnly || options.missingResourcesOnly || options.unusedFilesOnly || options.deadCodeOnly || options.fileSizeOnly) {
       // Individual modes - handle each separately, then run cleanup
     } else {
       // Default mode: Run comprehensive fix (all fixes including cleanup)
@@ -466,16 +495,79 @@ async function main() {
       showCompletionMessage(options, 'Description list fixes + cleanup');
       return;
       
+    } else if (options.linksCheckOnly) {
+      // Check broken links and 404 resources (backward compatibility)
+      console.log(chalk.blue('🔗 Running comprehensive links and resources check...'));
+      const linkResults = await fixer.checkBrokenLinks(options.directory);
+      const resourceResults = await fixer.check404Resources(options.directory);
+      const totalLinkIssues = linkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      const totalResourceIssues = resourceResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      
+      console.log(chalk.green(`\n✅ Checked links in ${linkResults.length} files (${totalLinkIssues} link issues found)`));
+      console.log(chalk.green(`✅ Checked resources in ${resourceResults.length} files (${totalResourceIssues} resource issues found)`));
+      console.log(chalk.gray('💡 Link and resource issues require manual review and cannot be auto-fixed'));
+      
+      showCompletionMessage(options, 'Links and resources check');
+      return;
+      
     } else if (options.brokenLinksOnly) {
-      // Check broken links only (no fixes, no cleanup)
-      console.log(chalk.blue('🔗 Running broken links check only...'));
+      // Check broken external links only 
+      console.log(chalk.blue('🔗 Running broken external links check only...'));
       const linkResults = await fixer.checkBrokenLinks(options.directory);
       const totalBrokenLinks = linkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       
-      console.log(chalk.green(`\n✅ Checked links in ${linkResults.length} files (${totalBrokenLinks} issues found)`));
+      console.log(chalk.green(`\n✅ Checked external links in ${linkResults.length} files (${totalBrokenLinks} issues found)`));
       console.log(chalk.gray('💡 Broken link issues require manual review and cannot be auto-fixed'));
       
-      showCompletionMessage(options, 'Broken links check');
+      showCompletionMessage(options, 'Broken external links check');
+      return;
+      
+    } else if (options.missingResourcesOnly) {
+      // Check 404 resources only (missing local files)
+      console.log(chalk.blue('📁 Running missing resources check only...'));
+      const resourceResults = await fixer.check404Resources(options.directory);
+      const totalMissingResources = resourceResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      
+      console.log(chalk.green(`\n✅ Checked local resources in ${resourceResults.length} files (${totalMissingResources} issues found)`));
+      console.log(chalk.gray('💡 Missing resource issues require manual review and cannot be auto-fixed'));
+      
+      showCompletionMessage(options, 'Missing resources check');
+      return;
+      
+    } else if (options.unusedFilesOnly) {
+      // Check unused files only (no fixes, no cleanup)
+      console.log(chalk.blue('🗂️ Running unused files check only...'));
+      const unusedResults = await fixer.checkUnusedFiles(options.directory);
+      const totalUnusedFiles = unusedResults.length;
+      
+      console.log(chalk.green(`\n✅ Checked project files (${totalUnusedFiles} unused files found)`));
+      console.log(chalk.gray('💡 Unused file detection is heuristic - manual review recommended'));
+      
+      showCompletionMessage(options, 'Unused files check');
+      return;
+      
+    } else if (options.deadCodeOnly) {
+      // Check dead code only (no fixes, no cleanup)
+      console.log(chalk.blue('☠️ Running dead code check only...'));
+      const deadCodeResults = await fixer.checkDeadCode(options.directory);
+      const totalDeadCode = deadCodeResults.length;
+      
+      console.log(chalk.green(`\n✅ Checked for dead code (${totalDeadCode} potential issues found)`));
+      console.log(chalk.gray('💡 Dead code analysis is heuristic - manual review recommended'));
+      
+      showCompletionMessage(options, 'Dead code check');
+      return;
+      
+    } else if (options.fileSizeOnly) {
+      // Check file sizes only (no fixes, no cleanup)
+      console.log(chalk.blue('📏 Running file size analysis only...'));
+      const sizeResults = await fixer.checkFileSizes(options.directory);
+      const totalLargeFiles = sizeResults.largeFiles.length;
+      
+      console.log(chalk.green(`\n✅ Analyzed ${sizeResults.totalFiles} files (${totalLargeFiles} large files found)`));
+      console.log(chalk.gray('💡 File size analysis is based on common best practices'));
+      
+      showCompletionMessage(options, 'File size analysis');
       return;
     }
 

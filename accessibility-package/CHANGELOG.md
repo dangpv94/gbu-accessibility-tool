@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0] - 2025-10-03
+
+### Added
+- **Separated Link and Resource Checking**: Split link validation into individual specialized functions
+  - `--broken-links`: Check only external HTTP/HTTPS links for 404, 500, timeout errors
+  - `--404-resources`: Check only local resources (images, CSS, JS, etc.) for missing files
+  - `--links-check`: Comprehensive mode checking both external links and local resources
+- **Enhanced Link Validation**: Improved external link checking with better error handling
+- **Resource Path Validation**: Better detection of missing local files with relative/absolute path support
+- **Individual Command Scripts**: Added npm scripts for `broken-links` and `404-resources`
+
+### Enhanced  
+- **CLI Options**: Added new command-line options for granular link/resource checking
+- **Mode-Based Analysis**: Intelligent filtering based on external vs local resource types
+- **Error Messages**: More specific error messages for different types of link/resource issues
+- **Documentation**: Updated README.md and README-vi.md with new separated features
+
+### Fixed
+- **Duplicate Method Issues**: Resolved conflicts from duplicate `checkBrokenLinks` methods
+- **CLI Parsing Logic**: Fixed individual mode detection for new options
+- **Mode Parameter Passing**: Proper mode parameter handling in analysis methods
+
+### Improved
+- **Performance**: Faster processing by checking only relevant resource types per mode
+- **User Experience**: Clearer separation of concerns for different validation needs
+- **Backward Compatibility**: Maintained `--links-check` for comprehensive checking
+
 ## [3.6.0] - 2025-01-08
 
 ### Added

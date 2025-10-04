@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>External Links Test</title>
+</head>
+<body>
+    <h1>External Links Test</h1>
+    
+    <!-- Working external link -->
+    <a href="https://www.google.com" role="link">Google (should work)</a>
+    
+    <!-- Broken external link -->
+    <a href="https://this-domain-does-not-exist-12345.com" role="link">Broken external link (should fail)</a>
+    
+    <!-- Local link (should be skipped in external-only mode) -->
+    <a href="sample.html" role="link">Local link (should be skipped)</a>
+    
+    <!-- Local image (should be skipped in external-only mode) -->
+    <img src="missing-image.jpg" alt="Local image (should be skipped)" role="img" aria-label="Local image (should be skipped)">
+    
+    <!-- Skip patterns -->
+    <a href="#anchor" role="link">Anchor (should be skipped)</a>
+    <a href="mailto:test@example.com" role="link">Email (should be skipped)</a>
+</body>
+</html>

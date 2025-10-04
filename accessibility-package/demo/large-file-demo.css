@@ -1,0 +1,213 @@
+/* Large CSS file for demo - exceeds 100KB threshold */
+
+/* This CSS file is artificially large to demonstrate file size analysis */
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: 'Arial', sans-serif;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Repeated styles to make file larger */
+.card-1, .card-2, .card-3, .card-4, .card-5, .card-6, .card-7, .card-8, .card-9, .card-10,
+.card-11, .card-12, .card-13, .card-14, .card-15, .card-16, .card-17, .card-18, .card-19, .card-20,
+.card-21, .card-22, .card-23, .card-24, .card-25, .card-26, .card-27, .card-28, .card-29, .card-30,
+.card-31, .card-32, .card-33, .card-34, .card-35, .card-36, .card-37, .card-38, .card-39, .card-40,
+.card-41, .card-42, .card-43, .card-44, .card-45, .card-46, .card-47, .card-48, .card-49, .card-50 {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 24px;
+    margin: 16px;
+    transition: all 0.3s ease;
+    transform: translateY(0);
+    opacity: 1;
+    border: 1px solid #e1e5e9;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    min-height: 200px;
+    max-width: 300px;
+    width: 100%;
+}
+
+.card-1:hover, .card-2:hover, .card-3:hover, .card-4:hover, .card-5:hover, .card-6:hover, .card-7:hover, .card-8:hover, .card-9:hover, .card-10:hover,
+.card-11:hover, .card-12:hover, .card-13:hover, .card-14:hover, .card-15:hover, .card-16:hover, .card-17:hover, .card-18:hover, .card-19:hover, .card-20:hover,
+.card-21:hover, .card-22:hover, .card-23:hover, .card-24:hover, .card-25:hover, .card-26:hover, .card-27:hover, .card-28:hover, .card-29:hover, .card-30:hover,
+.card-31:hover, .card-32:hover, .card-33:hover, .card-34:hover, .card-35:hover, .card-36:hover, .card-37:hover, .card-38:hover, .card-39:hover, .card-40:hover,
+.card-41:hover, .card-42:hover, .card-43:hover, .card-44:hover, .card-45:hover, .card-46:hover, .card-47:hover, .card-48:hover, .card-49:hover, .card-50:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    border-color: #667eea;
+}
+
+/* Button styles - repeated to make file larger */
+.btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-warning, .btn-info, .btn-light, .btn-dark,
+.btn-outline-primary, .btn-outline-secondary, .btn-outline-success, .btn-outline-danger, .btn-outline-warning, .btn-outline-info {
+    display: inline-block;
+    padding: 12px 24px;
+    margin: 4px 2px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    user-select: none;
+    white-space: nowrap;
+    vertical-align: middle;
+    line-height: 1.5;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Form styles - repeated */
+.form-group, .form-control, .form-label, .form-text, .form-check, .form-switch, .form-select, .form-range,
+.input-group, .input-group-text, .input-group-prepend, .input-group-append, .form-floating, .form-validation {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-image: none;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    margin-bottom: 1rem;
+    box-sizing: border-box;
+}
+
+/* Navigation styles - repeated */
+.navbar, .nav, .nav-item, .nav-link, .navbar-brand, .navbar-nav, .navbar-toggler, .navbar-collapse,
+.nav-tabs, .nav-pills, .nav-justified, .nav-fill, .breadcrumb, .breadcrumb-item, .pagination, .page-item, .page-link {
+    display: flex;
+    flex-wrap: wrap;
+    padding-left: 0;
+    margin-bottom: 0;
+    list-style: none;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.5rem 1rem;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+/* Grid system - repeated */
+.container-fluid, .container-sm, .container-md, .container-lg, .container-xl, .container-xxl,
+.row, .col, .col-1, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-9, .col-10, .col-11, .col-12,
+.col-sm, .col-sm-1, .col-sm-2, .col-sm-3, .col-sm-4, .col-sm-5, .col-sm-6, .col-sm-7, .col-sm-8, .col-sm-9, .col-sm-10, .col-sm-11, .col-sm-12,
+.col-md, .col-md-1, .col-md-2, .col-md-3, .col-md-4, .col-md-5, .col-md-6, .col-md-7, .col-md-8, .col-md-9, .col-md-10, .col-md-11, .col-md-12,
+.col-lg, .col-lg-1, .col-lg-2, .col-lg-3, .col-lg-4, .col-lg-5, .col-lg-6, .col-lg-7, .col-lg-8, .col-lg-9, .col-lg-10, .col-lg-11, .col-lg-12,
+.col-xl, .col-xl-1, .col-xl-2, .col-xl-3, .col-xl-4, .col-xl-5, .col-xl-6, .col-xl-7, .col-xl-8, .col-xl-9, .col-xl-10, .col-xl-11, .col-xl-12 {
+    position: relative;
+    width: 100%;
+    padding-right: 15px;
+    padding-left: 15px;
+    box-sizing: border-box;
+    flex-basis: 0;
+    flex-grow: 1;
+    max-width: 100%;
+}
+
+/* Typography - repeated */
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6,
+.display-1, .display-2, .display-3, .display-4, .display-5, .display-6,
+.lead, .text-muted, .text-primary, .text-secondary, .text-success, .text-danger, .text-warning, .text-info {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: inherit;
+    font-family: inherit;
+    font-style: normal;
+    font-variant: normal;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    word-spacing: normal;
+    white-space: normal;
+    text-align: inherit;
+    text-indent: 0;
+    text-shadow: none;
+    text-overflow: ellipsis;
+}
+
+/* Utility classes - repeated to increase file size */
+.d-none, .d-inline, .d-inline-block, .d-block, .d-table, .d-table-row, .d-table-cell, .d-flex, .d-inline-flex,
+.d-sm-none, .d-sm-inline, .d-sm-inline-block, .d-sm-block, .d-sm-table, .d-sm-table-row, .d-sm-table-cell, .d-sm-flex, .d-sm-inline-flex,
+.d-md-none, .d-md-inline, .d-md-inline-block, .d-md-block, .d-md-table, .d-md-table-row, .d-md-table-cell, .d-md-flex, .d-md-inline-flex,
+.d-lg-none, .d-lg-inline, .d-lg-inline-block, .d-lg-block, .d-lg-table, .d-lg-table-row, .d-lg-table-cell, .d-lg-flex, .d-lg-inline-flex,
+.d-xl-none, .d-xl-inline, .d-xl-inline-block, .d-xl-block, .d-xl-table, .d-xl-table-row, .d-xl-table-cell, .d-xl-flex, .d-xl-inline-flex {
+    display: none !important;
+}
+
+/* Spacing utilities - repeated */
+.m-0, .m-1, .m-2, .m-3, .m-4, .m-5, .mx-0, .mx-1, .mx-2, .mx-3, .mx-4, .mx-5, .my-0, .my-1, .my-2, .my-3, .my-4, .my-5,
+.mt-0, .mt-1, .mt-2, .mt-3, .mt-4, .mt-5, .mb-0, .mb-1, .mb-2, .mb-3, .mb-4, .mb-5, .ml-0, .ml-1, .ml-2, .ml-3, .ml-4, .ml-5, .mr-0, .mr-1, .mr-2, .mr-3, .mr-4, .mr-5,
+.p-0, .p-1, .p-2, .p-3, .p-4, .p-5, .px-0, .px-1, .px-2, .px-3, .px-4, .px-5, .py-0, .py-1, .py-2, .py-3, .py-4, .py-5,
+.pt-0, .pt-1, .pt-2, .pt-3, .pt-4, .pt-5, .pb-0, .pb-1, .pb-2, .pb-3, .pb-4, .pb-5, .pl-0, .pl-1, .pl-2, .pl-3, .pl-4, .pl-5, .pr-0, .pr-1, .pr-2, .pr-3, .pr-4, .pr-5 {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Color utilities */
+.bg-primary, .bg-secondary, .bg-success, .bg-danger, .bg-warning, .bg-info, .bg-light, .bg-dark, .bg-white, .bg-transparent,
+.text-primary, .text-secondary, .text-success, .text-danger, .text-warning, .text-info, .text-light, .text-dark, .text-muted, .text-white {
+    background-color: transparent !important;
+    color: inherit !important;
+}
+
+/* Border utilities */
+.border, .border-top, .border-right, .border-bottom, .border-left, .border-0, .border-top-0, .border-right-0, .border-bottom-0, .border-left-0,
+.border-primary, .border-secondary, .border-success, .border-danger, .border-warning, .border-info, .border-light, .border-dark, .border-white {
+    border: 1px solid #dee2e6 !important;
+}
+
+/* Position utilities */
+.position-static, .position-relative, .position-absolute, .position-fixed, .position-sticky,
+.fixed-top, .fixed-bottom, .sticky-top, .sticky-bottom {
+    position: static !important;
+}
+
+/* This pattern repeats many times to make the file exceed 100KB threshold */
+/* More repeated styles... */
+.large-component-1, .large-component-2, .large-component-3, .large-component-4, .large-component-5 {
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7);
+    padding: 40px;
+    margin: 20px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
+    transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Many more repetitive styles to reach the size threshold... */

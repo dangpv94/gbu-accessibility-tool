@@ -115,17 +115,19 @@ git push origin v3.0.0
 
 ### Package Information
 - **Name**: `gbu-accessibility-package`
-- **Current Version**: `3.0.0`
+- **Current Version**: `3.8.0`
 - **License**: MIT
 - **Node.js**: >=12.0.0
 
 ### Key Features for npm
-- ✅ **Comprehensive accessibility fixes** (9 different types)
+- ✅ **Comprehensive accessibility fixes** (10+ different types)
 - ✅ **Individual fix modes** for targeted improvements
 - ✅ **Smart context-aware** alt text generation
 - ✅ **axe DevTools compatibility** - fixes common issues
+- ✅ **Separated link validation** - external links vs local resources
+- ✅ **Project optimization** - unused files, dead code, file size analysis
 - ✅ **Safe heading analysis** - suggestions only
-- ✅ **Multi-language support** - Japanese, English
+- ✅ **Multi-language support** - Japanese, English, Vietnamese
 - ✅ **Backup safety** - automatic backup creation
 - ✅ **CLI and programmatic** usage
 - ✅ **Zero configuration** - works out of the box
@@ -146,6 +148,12 @@ git push origin v3.0.0
     "links-only": "node cli.js --links-only",
     "landmarks-only": "node cli.js --landmarks-only",
     "headings-only": "node cli.js --headings-only",
+    "links-check": "node cli.js --links-check",
+    "broken-links": "node cli.js --broken-links",
+    "404-resources": "node cli.js --404-resources",
+    "unused-files": "node cli.js --unused-files",
+    "dead-code": "node cli.js --dead-code",
+    "file-size": "node cli.js --file-size",
     "cleanup-only": "node cli.js --cleanup-only",
     "no-backup": "node cli.js --no-backup",
     "cleanup-backups": "find . -name '*.backup' -type f -delete"

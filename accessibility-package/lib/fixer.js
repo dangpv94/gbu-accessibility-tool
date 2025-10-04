@@ -2274,9 +2274,12 @@ class AccessibilityFixer {
       console.log(chalk.yellow('\n📑 Step 8: Heading analysis...'));
       results.headings = await this.analyzeHeadings(directory);
       
-      // Step 9: Check broken links (no auto-fix)
-      console.log(chalk.yellow('\n🔗 Step 9: Broken links check...'));
+      // Step 9: Check broken links and missing resources (no auto-fix)
+      console.log(chalk.yellow('\n🔗 Step 9: External links check...'));
       results.brokenLinks = await this.checkBrokenLinks(directory);
+      
+      console.log(chalk.yellow('\n📁 Step 9b: Missing resources check...'));
+      results.missingResources = await this.check404Resources(directory);
       
       // Step 10: Cleanup duplicate roles
       console.log(chalk.yellow('\n🧹 Step 10: Cleanup duplicate roles...'));
@@ -2866,9 +2869,9 @@ class AccessibilityFixer {
     return fixed;
   }
 
-  // Check for broken links and 404 resources
+  // Check for broken external links only
   async checkBrokenLinks(directory = '.') {
-    console.log(chalk.blue('🔗 Checking for broken links and 404 resources...'));
+    console.log(chalk.blue('🔗 Checking for broken external links...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -2876,7 +2879,7 @@ class AccessibilityFixer {
     for (const file of htmlFiles) {
       try {
         const content = await fs.readFile(file, 'utf8');
-        const issues = await this.analyzeBrokenLinks(content, file);
+        const issues = await this.analyzeBrokenLinks(content, file, 'external-only');
         
         if (issues.length > 0) {
           console.log(chalk.cyan(`\n📁 ${file}:`));
@@ -2895,12 +2898,46 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Analyzed links in ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Summary: Analyzed external links in ${results.length} files`));
     console.log(chalk.gray('💡 Broken link issues require manual review and cannot be auto-fixed'));
     return results;
   }
 
-  async analyzeBrokenLinks(content, filePath) {
+  // Check for 404 resources (local files) only
+  async check404Resources(directory = '.') {
+    console.log(chalk.blue('📁 Checking for 404 resources (missing local files)...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = await this.analyzeBrokenLinks(content, file, 'local-only');
+        
+        if (issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            if (issue.suggestion) {
+              console.log(chalk.gray(`    💡 ${issue.suggestion}`));
+            }
+          });
+        }
+        
+        results.push({ file, status: 'analyzed', issues: issues.length, missingResources: issues });
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Analyzed local resources in ${results.length} files`));
+    console.log(chalk.gray('💡 Missing resource issues require manual review and cannot be auto-fixed'));
+    return results;
+  }
+
+  async analyzeBrokenLinks(content, filePath, mode = 'all') {
     const issues = [];
     const path = require('path');
     const http = require('http');
@@ -2908,20 +2945,33 @@ class AccessibilityFixer {
     const { URL } = require('url');
     
     // Extract all links and resources
-    const linkPatterns = [
-      // Anchor links
-      { pattern: /<a[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Link', element: 'a' },
-      // Images
-      { pattern: /<img[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Image', element: 'img' },
-      // CSS links
-      { pattern: /<link[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'CSS', element: 'link' },
-      // Script sources
-      { pattern: /<script[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Script', element: 'script' },
-      // Video sources
-      { pattern: /<video[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Video', element: 'video' },
-      // Audio sources
-      { pattern: /<audio[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Audio', element: 'audio' }
-    ];
+    let linkPatterns = [];
+    
+    if (mode === 'external-only') {
+      // Only anchor links for external link checking
+      linkPatterns = [
+        { pattern: /<a[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Link', element: 'a' }
+      ];
+    } else if (mode === 'local-only') {
+      // Only resources (not anchor links) for 404 resource checking
+      linkPatterns = [
+        { pattern: /<img[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Image', element: 'img' },
+        { pattern: /<link[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'CSS', element: 'link' },
+        { pattern: /<script[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Script', element: 'script' },
+        { pattern: /<video[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Video', element: 'video' },
+        { pattern: /<audio[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Audio', element: 'audio' }
+      ];
+    } else {
+      // All patterns for comprehensive checking
+      linkPatterns = [
+        { pattern: /<a[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Link', element: 'a' },
+        { pattern: /<img[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Image', element: 'img' },
+        { pattern: /<link[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'CSS', element: 'link' },
+        { pattern: /<script[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Script', element: 'script' },
+        { pattern: /<video[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Video', element: 'video' },
+        { pattern: /<audio[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi, type: 'Audio', element: 'audio' }
+      ];
+    }
     
     const baseDir = path.dirname(filePath);
     
@@ -2929,7 +2979,7 @@ class AccessibilityFixer {
       let match;
       while ((match = linkPattern.pattern.exec(content)) !== null) {
         const url = match[1];
-        const issue = await this.checkSingleLink(url, baseDir, linkPattern.type, linkPattern.element);
+        const issue = await this.checkSingleLink(url, baseDir, linkPattern.type, linkPattern.element, mode);
         if (issue) {
           issues.push(issue);
         }
@@ -2939,7 +2989,7 @@ class AccessibilityFixer {
     return issues;
   }
 
-  async checkSingleLink(url, baseDir, resourceType, elementType) {
+  async checkSingleLink(url, baseDir, resourceType, elementType, mode = 'all') {
     // Skip certain URLs
     if (this.shouldSkipUrl(url)) {
       return null;
@@ -2947,10 +2997,16 @@ class AccessibilityFixer {
     
     try {
       if (this.isExternalUrl(url)) {
-        // Check external URLs
+        // Check external URLs only if mode allows
+        if (mode === 'local-only') {
+          return null; // Skip external URLs in local-only mode
+        }
         return await this.checkExternalUrl(url, resourceType, elementType);
       } else {
-        // Check local files
+        // Check local files only if mode allows
+        if (mode === 'external-only') {
+          return null; // Skip local files in external-only mode
+        }
         return await this.checkLocalFile(url, baseDir, resourceType, elementType);
       }
     } catch (error) {
@@ -3612,12 +3668,18 @@ class AccessibilityFixer {
       results.steps.push({ step: 8, name: 'Heading analysis', suggestions: totalHeadingSuggestions });
       console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
       
-      // Step 9: Broken links check
-      console.log(chalk.blue('🔗 Step 9: Broken links check...'));
+      // Step 9: Broken links and missing resources check
+      console.log(chalk.blue('🔗 Step 9a: External links check...'));
       const brokenLinksResults = await this.checkBrokenLinks(directory);
       const totalBrokenLinks = brokenLinksResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-      results.steps.push({ step: 9, name: 'Broken links check', issues: totalBrokenLinks });
-      console.log(chalk.gray('💡 Broken link issues require manual review and cannot be auto-fixed'));
+      results.steps.push({ step: '9a', name: 'External links check', issues: totalBrokenLinks });
+      
+      console.log(chalk.blue('📁 Step 9b: Missing resources check...'));
+      const missingResourcesResults = await this.check404Resources(directory);
+      const totalMissingResources = missingResourcesResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: '9b', name: 'Missing resources check', issues: totalMissingResources });
+      
+      console.log(chalk.gray('💡 Link and resource issues require manual review and cannot be auto-fixed'));
       
       // Step 10: Cleanup duplicate roles
       console.log(chalk.blue('🧹 Step 10: Cleanup duplicate roles...'));
@@ -3984,71 +4046,7 @@ class AccessibilityFixer {
     return results;
   }
 
-  async checkBrokenLinks(directory = '.') {
-    console.log(chalk.blue('🔗 Checking for broken links and 404 resources...'));
-    
-    const htmlFiles = await this.findHtmlFiles(directory);
-    const results = [];
-    let totalIssuesFound = 0;
-    
-    for (const file of htmlFiles) {
-      try {
-        const content = await fs.readFile(file, 'utf8');
-        const issues = this.analyzeBrokenLinks(content, file);
-        
-        if (issues.length > 0) {
-          console.log(chalk.cyan(`\n📁 ${file}:`));
-          issues.forEach(issue => {
-            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
-            if (issue.suggestion) {
-              console.log(chalk.gray(`    💡 ${issue.suggestion}`));
-            }
-            totalIssuesFound++;
-          });
-        }
-        
-        results.push({ file, status: 'analyzed', issues: issues.length });
-      } catch (error) {
-        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
-        results.push({ file, status: 'error', error: error.message });
-      }
-    }
-    
-    console.log(chalk.blue(`\n📊 Summary: Analyzed links in ${results.length} files`));
-    console.log(chalk.gray('💡 Broken link issues require manual review and cannot be auto-fixed'));
-    return results;
-  }
 
-  analyzeBrokenLinks(content, filePath) {
-    const issues = [];
-    
-    // Check for local image files
-    const imgPattern = /<img[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi;
-    let match;
-    
-    while ((match = imgPattern.exec(content)) !== null) {
-      const src = match[1];
-      
-      // Skip external URLs and data URLs
-      if (src.startsWith('http') || src.startsWith('data:') || src.startsWith('//')) {
-        continue;
-      }
-      
-      // Check if local file exists
-      const fullPath = path.resolve(path.dirname(filePath), src);
-      try {
-        require('fs').statSync(fullPath);
-      } catch (error) {
-        issues.push({
-          type: '📁 Image not found',
-          description: `img file does not exist: ${src}`,
-          suggestion: 'Create the missing file or update the image path'
-        });
-      }
-    }
-    
-    return issues;
-  }
 
   async cleanupDuplicateRoles(directory = '.') {
     console.log(chalk.blue('🧹 Cleaning up duplicate role attributes...'));
@@ -4403,12 +4401,18 @@ class AccessibilityFixer {
       results.steps.push({ step: 9, name: 'Heading analysis', suggestions: totalHeadingSuggestions });
       console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
       
-      // Step 10: Broken links check
-      console.log(chalk.blue('🔗 Step 10: Broken links check...'));
+      // Step 10: Broken links and missing resources check
+      console.log(chalk.blue('🔗 Step 10a: External links check...'));
       const brokenLinksResults = await this.checkBrokenLinks(directory);
       const totalBrokenLinks = brokenLinksResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-      results.steps.push({ step: 10, name: 'Broken links check', issues: totalBrokenLinks });
-      console.log(chalk.gray('💡 Broken link issues require manual review and cannot be auto-fixed'));
+      results.steps.push({ step: '10a', name: 'External links check', issues: totalBrokenLinks });
+      
+      console.log(chalk.blue('📁 Step 10b: Missing resources check...'));
+      const missingResourcesResults = await this.check404Resources(directory);
+      const totalMissingResources = missingResourcesResults.reduce((sum, r) => sum + (r.issues || 0), 0);
+      results.steps.push({ step: '10b', name: 'Missing resources check', issues: totalMissingResources });
+      
+      console.log(chalk.gray('💡 Link and resource issues require manual review and cannot be auto-fixed'));
       
       // Step 11: Cleanup duplicate roles
       console.log(chalk.blue('🧹 Step 11: Cleanup duplicate roles...'));
@@ -5494,6 +5498,968 @@ class AccessibilityFixer {
     
     await scan(directory);
     return files;
+  }
+
+  // Check for unused files in the project
+  async checkUnusedFiles(directory = '.') {
+    console.log(chalk.blue('🗂️ Checking for unused files...'));
+    
+    const results = [];
+    const allFiles = await this.findAllProjectFiles(directory);
+    const referencedFiles = await this.findReferencedFiles(directory);
+    
+    // Normalize paths for comparison
+    const normalizedReferenced = new Set();
+    referencedFiles.forEach(file => {
+      normalizedReferenced.add(path.resolve(file));
+    });
+    
+    for (const file of allFiles) {
+      const absolutePath = path.resolve(file);
+      
+      // Skip certain files that are typically not referenced directly
+      if (this.shouldSkipUnusedCheck(file)) {
+        continue;
+      }
+      
+      if (!normalizedReferenced.has(absolutePath)) {
+        const relativePath = path.relative(directory, file);
+        const fileType = this.getFileType(file);
+        
+        console.log(chalk.yellow(`  🗑️ Unused ${fileType}: ${relativePath}`));
+        
+        results.push({
+          type: `🗑️ Unused ${fileType}`,
+          description: `File not referenced anywhere: ${relativePath}`,
+          suggestion: `Consider removing if truly unused: ${relativePath}`,
+          filePath: file,
+          fileType: fileType,
+          relativePath: relativePath
+        });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${results.length} potentially unused files`));
+    console.log(chalk.gray('💡 Review carefully before removing - some files may be referenced dynamically'));
+    
+    return results;
+  }
+
+  async findAllProjectFiles(directory) {
+    const files = [];
+    const extensions = ['.html', '.css', '.js', '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.ico', '.pdf', '.mp4', '.webm', '.mp3', '.wav'];
+    
+    async function scan(dir) {
+      try {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          
+          if (entry.isDirectory()) {
+            // Skip common directories that shouldn't be analyzed
+            if (!this.shouldSkipDirectory(entry.name)) {
+              await scan(fullPath);
+            }
+          } else if (entry.isFile()) {
+            const ext = path.extname(entry.name).toLowerCase();
+            if (extensions.includes(ext)) {
+              files.push(fullPath);
+            }
+          }
+        }
+      } catch (error) {
+        // Skip directories we can't read
+      }
+    }
+    
+    await scan.call(this, directory);
+    return files;
+  }
+
+  async findReferencedFiles(directory) {
+    const referenced = new Set();
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const cssFiles = await this.findCssFiles(directory);
+    const jsFiles = await this.findJsFiles(directory);
+    
+    // Find references in HTML files
+    for (const htmlFile of htmlFiles) {
+      try {
+        const content = await fs.readFile(htmlFile, 'utf8');
+        const refs = this.extractFileReferences(content, path.dirname(htmlFile));
+        refs.forEach(ref => referenced.add(ref));
+      } catch (error) {
+        // Skip files we can't read
+      }
+    }
+    
+    // Find references in CSS files
+    for (const cssFile of cssFiles) {
+      try {
+        const content = await fs.readFile(cssFile, 'utf8');
+        const refs = this.extractCssReferences(content, path.dirname(cssFile));
+        refs.forEach(ref => referenced.add(ref));
+      } catch (error) {
+        // Skip files we can't read
+      }
+    }
+    
+    // Find references in JS files
+    for (const jsFile of jsFiles) {
+      try {
+        const content = await fs.readFile(jsFile, 'utf8');
+        const refs = this.extractJsReferences(content, path.dirname(jsFile));
+        refs.forEach(ref => referenced.add(ref));
+      } catch (error) {
+        // Skip files we can't read
+      }
+    }
+    
+    return Array.from(referenced);
+  }
+
+  extractFileReferences(content, baseDir) {
+    const references = [];
+    
+    // HTML patterns for file references
+    const patterns = [
+      // Images
+      /<img[^>]*src\s*=\s*["']([^"']+)["']/gi,
+      // Links (CSS, other files)
+      /<link[^>]*href\s*=\s*["']([^"']+)["']/gi,
+      // Scripts
+      /<script[^>]*src\s*=\s*["']([^"']+)["']/gi,
+      // Anchors
+      /<a[^>]*href\s*=\s*["']([^"']+)["']/gi,
+      // Video/Audio
+      /<(?:video|audio)[^>]*src\s*=\s*["']([^"']+)["']/gi,
+      // Object/Embed
+      /<(?:object|embed)[^>]*src\s*=\s*["']([^"']+)["']/gi,
+      // Iframe
+      /<iframe[^>]*src\s*=\s*["']([^"']+)["']/gi,
+      // Meta (for icons)
+      /<meta[^>]*content\s*=\s*["']([^"']+\.(ico|png|jpg|jpeg|svg))["']/gi
+    ];
+    
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(content)) !== null) {
+        const url = match[1];
+        if (this.isLocalFile(url)) {
+          const resolvedPath = this.resolveFilePath(url, baseDir);
+          if (resolvedPath) {
+            references.push(resolvedPath);
+          }
+        }
+      }
+    }
+    
+    return references;
+  }
+
+  extractCssReferences(content, baseDir) {
+    const references = [];
+    
+    // CSS patterns for file references
+    const patterns = [
+      // url() function
+      /url\s*\(\s*["']?([^"')]+)["']?\s*\)/gi,
+      // @import
+      /@import\s+["']([^"']+)["']/gi
+    ];
+    
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(content)) !== null) {
+        const url = match[1];
+        if (this.isLocalFile(url)) {
+          const resolvedPath = this.resolveFilePath(url, baseDir);
+          if (resolvedPath) {
+            references.push(resolvedPath);
+          }
+        }
+      }
+    }
+    
+    return references;
+  }
+
+  extractJsReferences(content, baseDir) {
+    const references = [];
+    
+    // JavaScript patterns for file references
+    const patterns = [
+      // require() calls
+      /require\s*\(\s*["']([^"']+)["']\s*\)/gi,
+      // import statements
+      /import\s+.*?from\s+["']([^"']+)["']/gi,
+      // fetch() calls with local files
+      /fetch\s*\(\s*["']([^"']*\.(html|css|js|json|xml))["']\s*\)/gi,
+      // XMLHttpRequest
+      /\.open\s*\(\s*["'][^"']*["']\s*,\s*["']([^"']*\.(html|css|js|json|xml))["']/gi
+    ];
+    
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(content)) !== null) {
+        const url = match[1];
+        if (this.isLocalFile(url)) {
+          const resolvedPath = this.resolveFilePath(url, baseDir);
+          if (resolvedPath) {
+            references.push(resolvedPath);
+          }
+        }
+      }
+    }
+    
+    return references;
+  }
+
+  async findCssFiles(directory) {
+    const files = [];
+    
+    async function scan(dir) {
+      try {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          
+          if (entry.isDirectory() && !entry.name.startsWith('.')) {
+            await scan(fullPath);
+          } else if (entry.isFile() && entry.name.endsWith('.css')) {
+            files.push(fullPath);
+          }
+        }
+      } catch (error) {
+        // Skip directories we can't read
+      }
+    }
+    
+    await scan(directory);
+    return files;
+  }
+
+  async findJsFiles(directory) {
+    const files = [];
+    
+    async function scan(dir) {
+      try {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          
+          if (entry.isDirectory() && !entry.name.startsWith('.')) {
+            await scan(fullPath);
+          } else if (entry.isFile() && (entry.name.endsWith('.js') || entry.name.endsWith('.mjs'))) {
+            files.push(fullPath);
+          }
+        }
+      } catch (error) {
+        // Skip directories we can't read
+      }
+    }
+    
+    await scan(directory);
+    return files;
+  }
+
+  shouldSkipDirectory(dirName) {
+    const skipDirs = [
+      'node_modules', '.git', '.svn', '.hg', 'bower_components',
+      'vendor', 'tmp', 'temp', '.cache', 'dist', 'build', 'coverage',
+      '.nyc_output', '.vscode', '.idea', '__pycache__', '.DS_Store'
+    ];
+    return skipDirs.includes(dirName) || dirName.startsWith('.');
+  }
+
+  shouldSkipUnusedCheck(filePath) {
+    const fileName = path.basename(filePath);
+    const dirName = path.basename(path.dirname(filePath));
+    
+    // Skip certain file types and patterns
+    const skipPatterns = [
+      // Common files that might not be directly referenced
+      /^(index|main|app)\.(html|js|css)$/i,
+      /^(readme|license|changelog)/i,
+      /^package\.json$/i,
+      /^\.gitignore$/i,
+      /^favicon\.(ico|png)$/i,
+      /^robots\.txt$/i,
+      /^sitemap\.xml$/i,
+      // Backup files
+      /\.backup$/i,
+      // Test directories
+      /test|spec|__tests__/i
+    ];
+    
+    return skipPatterns.some(pattern => 
+      pattern.test(fileName) || pattern.test(dirName)
+    );
+  }
+
+  getFileType(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    const typeMap = {
+      '.html': 'HTML',
+      '.css': 'CSS',
+      '.js': 'JavaScript',
+      '.mjs': 'JavaScript Module',
+      '.jpg': 'Image',
+      '.jpeg': 'Image',
+      '.png': 'Image',
+      '.gif': 'Image',
+      '.svg': 'SVG',
+      '.webp': 'Image',
+      '.ico': 'Icon',
+      '.pdf': 'PDF',
+      '.mp4': 'Video',
+      '.webm': 'Video',
+      '.mp3': 'Audio',
+      '.wav': 'Audio'
+    };
+    
+    return typeMap[ext] || 'File';
+  }
+
+  isLocalFile(url) {
+    return !url.startsWith('http://') && 
+           !url.startsWith('https://') && 
+           !url.startsWith('//') &&
+           !url.startsWith('data:') &&
+           !url.startsWith('mailto:') &&
+           !url.startsWith('tel:') &&
+           !url.startsWith('#');
+  }
+
+  resolveFilePath(url, baseDir) {
+    try {
+      let filePath;
+      
+      if (url.startsWith('/')) {
+        // Absolute path from web root
+        filePath = path.join(baseDir, url.substring(1));
+      } else {
+        // Relative path
+        filePath = path.resolve(baseDir, url);
+      }
+      
+      return filePath;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // Check for dead code in CSS and JavaScript files
+  async checkDeadCode(directory = '.') {
+    console.log(chalk.blue('☠️ Checking for dead code...'));
+    
+    const results = [];
+    
+    // Check CSS dead code
+    const cssDeadCode = await this.checkDeadCss(directory);
+    results.push(...cssDeadCode);
+    
+    // Check JavaScript dead code
+    const jsDeadCode = await this.checkDeadJs(directory);
+    results.push(...jsDeadCode);
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${results.length} potential dead code issues`));
+    console.log(chalk.gray('💡 Dead code analysis is heuristic - manual review recommended'));
+    
+    return results;
+  }
+
+  async checkDeadCss(directory) {
+    console.log(chalk.cyan('🎨 Analyzing CSS dead code...'));
+    
+    const results = [];
+    const cssFiles = await this.findCssFiles(directory);
+    const htmlFiles = await this.findHtmlFiles(directory);
+    
+    // Get all HTML content to check against
+    let allHtmlContent = '';
+    for (const htmlFile of htmlFiles) {
+      try {
+        const content = await fs.readFile(htmlFile, 'utf8');
+        allHtmlContent += content + '\n';
+      } catch (error) {
+        // Skip files we can't read
+      }
+    }
+    
+    for (const cssFile of cssFiles) {
+      try {
+        const content = await fs.readFile(cssFile, 'utf8');
+        const deadRules = this.findDeadCssRules(content, allHtmlContent);
+        
+        if (deadRules.length > 0) {
+          const relativePath = path.relative(directory, cssFile);
+          console.log(chalk.cyan(`\n📁 ${relativePath}:`));
+          
+          deadRules.forEach(rule => {
+            console.log(chalk.yellow(`  ☠️ Potentially dead CSS: ${rule.selector}`));
+            results.push({
+              type: '☠️ Dead CSS rule',
+              description: `CSS selector not found in HTML: ${rule.selector}`,
+              suggestion: `Consider removing unused CSS rule: ${rule.selector}`,
+              filePath: cssFile,
+              relativePath: relativePath,
+              selector: rule.selector,
+              lineNumber: rule.lineNumber
+            });
+          });
+        }
+        
+      } catch (error) {
+        console.error(chalk.red(`❌ Error analyzing CSS ${cssFile}: ${error.message}`));
+      }
+    }
+    
+    return results;
+  }
+
+  findDeadCssRules(cssContent, htmlContent) {
+    const deadRules = [];
+    
+    // Simple CSS parser to extract selectors
+    const cssRules = this.parseCssSelectors(cssContent);
+    
+    for (const rule of cssRules) {
+      if (this.isCssSelectorUsed(rule.selector, htmlContent)) {
+        continue; // Selector is used
+      }
+      
+      // Skip certain selectors that are commonly dynamic
+      if (this.shouldSkipCssSelector(rule.selector)) {
+        continue;
+      }
+      
+      deadRules.push(rule);
+    }
+    
+    return deadRules;
+  }
+
+  parseCssSelectors(cssContent) {
+    const rules = [];
+    const lines = cssContent.split('\n');
+    let inRule = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Skip comments and empty lines
+      if (line.startsWith('/*') || line.includes('*/') || !line) {
+        continue;
+      }
+      
+      // Skip @rules like @media, @keyframes
+      if (line.startsWith('@')) {
+        continue;
+      }
+      
+      // Check if we're entering a rule block
+      if (line.includes('{')) {
+        inRule = true;
+        // Extract selector part before the {
+        const selectorPart = line.split('{')[0].trim();
+        if (selectorPart && !selectorPart.includes(':') && !selectorPart.includes(';')) {
+          rules.push({
+            selector: selectorPart,
+            lineNumber: i + 1
+          });
+        }
+        continue;
+      }
+      
+      // Check if we're exiting a rule block
+      if (line.includes('}')) {
+        inRule = false;
+        continue;
+      }
+      
+      // If we're not in a rule and line doesn't contain CSS properties, it might be a selector
+      if (!inRule && !line.includes(':') && !line.includes(';') && line.length > 0) {
+        rules.push({
+          selector: line,
+          lineNumber: i + 1
+        });
+      }
+    }
+    
+    return rules;
+  }
+
+  isCssSelectorUsed(selector, htmlContent) {
+    // Simple heuristic checks
+    
+    // Check for class selectors
+    if (selector.startsWith('.')) {
+      const className = selector.substring(1).split(/[:\s>+~]/)[0];
+      return htmlContent.includes(`class="${className}"`) || 
+             htmlContent.includes(`class='${className}'`) ||
+             htmlContent.includes(`class=".*${className}.*"`) ||
+             htmlContent.includes(`class='.*${className}.*'`);
+    }
+    
+    // Check for ID selectors
+    if (selector.startsWith('#')) {
+      const idName = selector.substring(1).split(/[:\s>+~]/)[0];
+      return htmlContent.includes(`id="${idName}"`) || 
+             htmlContent.includes(`id='${idName}'`);
+    }
+    
+    // Check for tag selectors
+    const tagMatch = selector.match(/^([a-zA-Z]+)/);
+    if (tagMatch) {
+      const tagName = tagMatch[1].toLowerCase();
+      return htmlContent.toLowerCase().includes(`<${tagName}`);
+    }
+    
+    return true; // Conservative approach - assume complex selectors are used
+  }
+
+  shouldSkipCssSelector(selector) {
+    const skipPatterns = [
+      // Pseudo-classes and pseudo-elements
+      /:hover|:focus|:active|:visited|:before|:after/,
+      // Media queries and complex selectors
+      /@media|@keyframes|@font-face/,
+      // Dynamic classes that might be added by JavaScript
+      /\.active|\.selected|\.hidden|\.show|\.hide/,
+      // Common framework classes
+      /\.btn|\.form|\.nav|\.modal|\.tooltip/
+    ];
+    
+    return skipPatterns.some(pattern => pattern.test(selector));
+  }
+
+  async checkDeadJs(directory) {
+    console.log(chalk.cyan('📜 Analyzing JavaScript dead code...'));
+    
+    const results = [];
+    const jsFiles = await this.findJsFiles(directory);
+    const htmlFiles = await this.findHtmlFiles(directory);
+    
+    // Get all HTML content to check against
+    let allHtmlContent = '';
+    for (const htmlFile of htmlFiles) {
+      try {
+        const content = await fs.readFile(htmlFile, 'utf8');
+        allHtmlContent += content + '\n';
+      } catch (error) {
+        // Skip files we can't read
+      }
+    }
+    
+    for (const jsFile of jsFiles) {
+      try {
+        const content = await fs.readFile(jsFile, 'utf8');
+        const deadCode = this.findDeadJsCode(content, allHtmlContent, jsFile);
+        
+        if (deadCode.length > 0) {
+          const relativePath = path.relative(directory, jsFile);
+          console.log(chalk.cyan(`\n📁 ${relativePath}:`));
+          
+          deadCode.forEach(code => {
+            console.log(chalk.yellow(`  ☠️ Potentially dead JS: ${code.name}`));
+            results.push({
+              type: '☠️ Dead JavaScript',
+              description: `${code.type} not referenced: ${code.name}`,
+              suggestion: `Consider removing unused ${code.type.toLowerCase()}: ${code.name}`,
+              filePath: jsFile,
+              relativePath: relativePath,
+              name: code.name,
+              codeType: code.type,
+              lineNumber: code.lineNumber
+            });
+          });
+        }
+        
+      } catch (error) {
+        console.error(chalk.red(`❌ Error analyzing JS ${jsFile}: ${error.message}`));
+      }
+    }
+    
+    return results;
+  }
+
+  findDeadJsCode(jsContent, htmlContent, jsFilePath) {
+    const deadCode = [];
+    
+    // Find function declarations
+    const functions = this.parseJsFunctions(jsContent);
+    const variables = this.parseJsVariables(jsContent);
+    
+    // Check if functions are used
+    for (const func of functions) {
+      if (!this.isJsFunctionUsed(func.name, jsContent, htmlContent)) {
+        deadCode.push({
+          type: 'Function',
+          name: func.name,
+          lineNumber: func.lineNumber
+        });
+      }
+    }
+    
+    // Check if variables are used
+    for (const variable of variables) {
+      if (!this.isJsVariableUsed(variable.name, jsContent, htmlContent)) {
+        deadCode.push({
+          type: 'Variable',
+          name: variable.name,
+          lineNumber: variable.lineNumber
+        });
+      }
+    }
+    
+    return deadCode;
+  }
+
+  parseJsFunctions(jsContent) {
+    const functions = [];
+    const lines = jsContent.split('\n');
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Function declarations
+      const funcMatch = line.match(/function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/);
+      if (funcMatch) {
+        functions.push({
+          name: funcMatch[1],
+          lineNumber: i + 1
+        });
+      }
+      
+      // Arrow functions assigned to variables
+      const arrowMatch = line.match(/(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*\([^)]*\)\s*=>/);
+      if (arrowMatch) {
+        functions.push({
+          name: arrowMatch[1],
+          lineNumber: i + 1
+        });
+      }
+    }
+    
+    return functions;
+  }
+
+  parseJsVariables(jsContent) {
+    const variables = [];
+    const lines = jsContent.split('\n');
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Variable declarations
+      const varMatch = line.match(/(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/);
+      if (varMatch && !line.includes('=') && !line.includes('function')) {
+        variables.push({
+          name: varMatch[1],
+          lineNumber: i + 1
+        });
+      }
+    }
+    
+    return variables;
+  }
+
+  isJsFunctionUsed(functionName, jsContent, htmlContent) {
+    // Check if function is called in JS
+    const jsCallPattern = new RegExp(`${functionName}\\s*\\(`, 'g');
+    if (jsCallPattern.test(jsContent)) {
+      return true;
+    }
+    
+    // Check if function is referenced in HTML (onclick, etc.)
+    const htmlCallPattern = new RegExp(`${functionName}\\s*\\(`, 'g');
+    if (htmlCallPattern.test(htmlContent)) {
+      return true;
+    }
+    
+    // Check for event handlers in HTML
+    const eventPattern = new RegExp(`on\\w+\\s*=\\s*["'][^"']*${functionName}`, 'g');
+    if (eventPattern.test(htmlContent)) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  isJsVariableUsed(variableName, jsContent, htmlContent) {
+    // Create pattern that excludes the declaration line
+    const lines = jsContent.split('\n');
+    let usageFound = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Skip the declaration line
+      if (line.includes(`${variableName}`) && 
+          (line.includes('const ') || line.includes('let ') || line.includes('var '))) {
+        continue;
+      }
+      
+      // Check for usage
+      const usagePattern = new RegExp(`\\b${variableName}\\b`);
+      if (usagePattern.test(line)) {
+        usageFound = true;
+        break;
+      }
+    }
+    
+    return usageFound;
+  }
+
+  // Check file sizes and suggest optimizations
+  async checkFileSizes(directory = '.') {
+    console.log(chalk.blue('📏 Analyzing file sizes and suggesting optimizations...'));
+    
+    const results = [];
+    const allFiles = await this.findAllProjectFiles(directory);
+    const sizeThresholds = {
+      image: 500 * 1024,      // 500KB for images
+      // css: 100 * 1024,        // 100KB for CSS
+      js: 200 * 1024,         // 200KB for JavaScript
+      // html: 50 * 1024,        // 50KB for HTML
+      video: 10 * 1024 * 1024, // 10MB for videos
+      audio: 5 * 1024 * 1024,  // 5MB for audio
+      other: 1 * 1024 * 1024   // 1MB for other files
+    };
+    
+    let totalSize = 0;
+    const fileSizes = [];
+    
+    for (const file of allFiles) {
+      try {
+        const stats = await require('fs').promises.stat(file);
+        const fileSize = stats.size;
+        const fileType = this.getFileCategory(file);
+        const relativePath = path.relative(directory, file);
+        
+        totalSize += fileSize;
+        fileSizes.push({
+          path: file,
+          relativePath: relativePath,
+          size: fileSize,
+          type: fileType,
+          sizeFormatted: this.formatFileSize(fileSize)
+        });
+        
+        // Check if file exceeds threshold
+        const threshold = sizeThresholds[fileType] || sizeThresholds.other;
+        if (fileSize > threshold) {
+          const suggestions = this.getSizeOptimizationSuggestions(file, fileSize, fileType);
+          
+          console.log(chalk.yellow(`  📏 Large ${fileType}: ${relativePath} (${this.formatFileSize(fileSize)})`));
+          suggestions.forEach(suggestion => {
+            console.log(chalk.gray(`    💡 ${suggestion}`));
+          });
+          
+          results.push({
+            type: `📏 Large ${fileType}`,
+            description: `File size ${this.formatFileSize(fileSize)} exceeds recommended ${this.formatFileSize(threshold)}`,
+            filePath: file,
+            relativePath: relativePath,
+            size: fileSize,
+            sizeFormatted: this.formatFileSize(fileSize),
+            threshold: threshold,
+            thresholdFormatted: this.formatFileSize(threshold),
+            suggestions: suggestions,
+            fileType: fileType
+          });
+        }
+      } catch (error) {
+        // Skip files we can't read
+      }
+    }
+    
+    // Sort files by size (largest first)
+    fileSizes.sort((a, b) => b.size - a.size);
+    
+    // Get type breakdown for return data only
+    const typeBreakdown = this.getFileSizeBreakdown(fileSizes);
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${results.length} files that could be optimized`));
+    console.log(chalk.gray('💡 File size analysis is based on common best practices'));
+    
+    return {
+      largeFiles: results,
+      allFiles: fileSizes,
+      totalSize: totalSize,
+      totalFiles: fileSizes.length,
+      typeBreakdown: typeBreakdown
+    };
+  }
+
+  getFileCategory(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    
+    if (['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.ico', '.bmp'].includes(ext)) {
+      return 'image';
+    } else if (['.css', '.scss', '.sass', '.less'].includes(ext)) {
+      return 'css';
+    } else if (['.js', '.mjs', '.ts', '.jsx', '.tsx'].includes(ext)) {
+      return 'js';
+    } else if (['.html', '.htm', '.xhtml'].includes(ext)) {
+      return 'html';
+    } else if (['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv'].includes(ext)) {
+      return 'video';
+    } else if (['.mp3', '.wav', '.ogg', '.aac', '.flac'].includes(ext)) {
+      return 'audio';
+    } else if (['.pdf', '.doc', '.docx', '.txt'].includes(ext)) {
+      return 'document';
+    } else if (['.zip', '.rar', '.tar', '.gz', '.7z'].includes(ext)) {
+      return 'archive';
+    } else if (['.ttf', '.woff', '.woff2', '.otf', '.eot'].includes(ext)) {
+      return 'font';
+    } else {
+      return 'other';
+    }
+  }
+
+  getFileIcon(fileType) {
+    const icons = {
+      image: '🖼️',
+      css: '🎨',
+      js: '📜',
+      html: '📄',
+      video: '🎥',
+      audio: '🎵',
+      document: '📃',
+      archive: '📦',
+      font: '🔤',
+      other: '📄'
+    };
+    return icons[fileType] || '📄';
+  }
+
+  formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  getSizeOptimizationSuggestions(filePath, fileSize, fileType) {
+    const suggestions = [];
+    const fileName = path.basename(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    
+    switch (fileType) {
+      case 'image':
+        if (['.jpg', '.jpeg'].includes(ext)) {
+          suggestions.push('Compress JPEG with tools like ImageOptim, TinyPNG, or jpegoptim');
+          suggestions.push('Consider converting to WebP format for better compression');
+          if (fileSize > 1024 * 1024) {
+            suggestions.push('Resize image dimensions if currently larger than needed');
+          }
+        } else if (ext === '.png') {
+          suggestions.push('Compress PNG with tools like OptiPNG, PNGCrush, or TinyPNG');
+          suggestions.push('Consider converting to WebP for smaller size');
+          suggestions.push('Use JPEG for photos if transparency not needed');
+        } else if (ext === '.svg') {
+          suggestions.push('Minify SVG code with SVGO or similar tools');
+          suggestions.push('Remove unnecessary metadata and comments');
+        } else if (ext === '.gif') {
+          suggestions.push('Consider converting to WebP or MP4 for animations');
+          suggestions.push('Reduce color palette if possible');
+        }
+        break;
+        
+      case 'js':
+        suggestions.push('Minify JavaScript code with tools like UglifyJS or Terser');
+        suggestions.push('Enable gzip/brotli compression on your web server');
+        suggestions.push('Consider code splitting for large bundles');
+        suggestions.push('Remove unused code and dead code elimination');
+        if (fileSize > 500 * 1024) {
+          suggestions.push('Consider breaking into smaller modules');
+        }
+        break;
+        
+      case 'css':
+        suggestions.push('Minify CSS with tools like CleanCSS or cssnano');
+        suggestions.push('Remove unused CSS rules (run --dead-code analysis)');
+        suggestions.push('Enable gzip/brotli compression on your web server');
+        suggestions.push('Consider using CSS-in-JS or CSS modules for better tree-shaking');
+        break;
+        
+      case 'html':
+        suggestions.push('Minify HTML by removing whitespace and comments');
+        suggestions.push('Enable gzip/brotli compression on your web server');
+        suggestions.push('Inline critical CSS for above-the-fold content');
+        break;
+        
+      case 'video':
+        suggestions.push('Compress video with H.264 or H.265 codecs');
+        suggestions.push('Consider multiple quality versions (720p, 1080p)');
+        suggestions.push('Use streaming formats like HLS or DASH for large videos');
+        suggestions.push('Consider hosting on CDN or video platforms');
+        break;
+        
+      case 'audio':
+        suggestions.push('Use compressed formats like MP3 or AAC instead of WAV');
+        suggestions.push('Reduce bitrate if quality allows (128-192 kbps often sufficient)');
+        suggestions.push('Consider streaming for long audio files');
+        break;
+        
+      case 'font':
+        suggestions.push('Use WOFF2 format for better compression');
+        suggestions.push('Subset fonts to include only needed characters');
+        suggestions.push('Consider using system fonts or web font alternatives');
+        break;
+        
+      case 'document':
+        if (ext === '.pdf') {
+          suggestions.push('Compress PDF with tools like Ghostscript or online compressors');
+          suggestions.push('Reduce image quality in PDF if acceptable');
+        }
+        break;
+        
+      default:
+        suggestions.push('Enable compression on your web server');
+        suggestions.push('Consider if this file is necessary in production');
+    }
+    
+    // General suggestions for all large files
+    if (fileSize > 1024 * 1024) {
+      suggestions.push('Consider lazy loading if not needed immediately');
+      suggestions.push('Use CDN for better delivery performance');
+    }
+    
+    return suggestions;
+  }
+
+  getFileSizeBreakdown(fileSizes) {
+    const breakdown = {};
+    
+    fileSizes.forEach(file => {
+      if (!breakdown[file.type]) {
+        breakdown[file.type] = {
+          count: 0,
+          totalSize: 0
+        };
+      }
+      breakdown[file.type].count++;
+      breakdown[file.type].totalSize += file.size;
+    });
+    
+    // Sort by total size
+    const sortedBreakdown = {};
+    Object.entries(breakdown)
+      .sort(([,a], [,b]) => b.totalSize - a.totalSize)
+      .forEach(([key, value]) => {
+        sortedBreakdown[key] = value;
+      });
+    
+    return sortedBreakdown;
   }
 }
 

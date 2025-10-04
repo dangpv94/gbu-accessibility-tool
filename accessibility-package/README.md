@@ -19,7 +19,11 @@
 - 🏛️ **Landmarks** - Add missing main and navigation landmarks
 - 📑 **Heading Analysis & Auto-Fix** - Analyze heading structure with optional auto-fix using `--auto-fix-headings`
 - 🎯 **Nested Controls Detection** - Detect and fix nested interactive controls
-- 🔍 **Broken Links Detection** - Detect broken links and 404 resources
+- 🔍 **Broken Links Detection** - Detect broken external links
+- 📁 **404 Resources Detection** - Detect missing local resources (images, CSS, JS, etc.)
+- 🗂️ **Unused Files Detection** - Find files not referenced anywhere in the project
+- ☠️ **Dead Code Analysis** - Detect unused CSS rules and JavaScript functions
+- 📏 **File Size Analysis** - Check file sizes and suggest optimizations
 - 🧹 **Duplicate Cleanup** - Remove duplicate role attributes
 
 ### 🚀 **Enhanced Alt Attribute Features (Integrated!)**
@@ -148,7 +152,12 @@ Fix Modes:
   --landmarks-only         Fix landmarks + cleanup
   --headings-only          Analyze heading structure with optional auto-fix
   --auto-fix-headings      Enable automatic heading structure fixes
-  --links-check            Check for broken links and 404 resources
+    --links-check            Check for broken links and 404 resources (comprehensive, no auto-fix)
+  --broken-links           Check for broken external links only (no auto-fix)
+  --404-resources          Check for missing local resources only (no auto-fix)
+  --unused-files           Check for unused files in project
+  --dead-code              Check for dead code in CSS and JavaScript
+  --file-size, --size-check Check file sizes and suggest optimizations
   --cleanup-only           Only cleanup duplicate role attributes
 
 Enhanced Alt Options:
@@ -179,7 +188,12 @@ gbu-a11y --forms-only        # Fix form labels + cleanup
 gbu-a11y --buttons-only      # Fix button names + cleanup
 gbu-a11y --headings-only     # Analyze heading structure
 gbu-a11y --headings-only --auto-fix-headings  # Auto-fix heading structure
-gbu-a11y --links-check       # Check broken links + cleanup
+gbu-a11y --links-check       # Check broken links and missing resources + cleanup
+gbu-a11y --broken-links      # Check broken external links only + cleanup
+gbu-a11y --404-resources     # Check missing local resources only + cleanup
+gbu-a11y --unused-files      # Check for unused files in project
+gbu-a11y --dead-code         # Check for dead CSS and JavaScript code
+gbu-a11y --file-size         # Check file sizes and suggest optimizations
 
 # Enhanced alt attribute features
 gbu-a11y --enhanced-alt                                    # Basic enhanced mode
@@ -277,6 +291,15 @@ await fixer.fixEmptyAltAttributes('./src');
 // No need to import separate classes
 const results = await fixer.fixAllAccessibilityIssues('./src');
 console.log('Accessibility fixes completed with enhanced features:', results);
+
+// New: Check for unused files
+await fixer.checkUnusedFiles('./src');
+
+// New: Check for dead code
+await fixer.checkDeadCode('./src');
+
+// New: Check file sizes
+await fixer.checkFileSizes('./src');
 ```
 
 ## 🎯 What Gets Fixed
@@ -311,10 +334,30 @@ console.log('Accessibility fixes completed with enhanced features:', results);
 - **Role attributes** → WCAG-compliant role assignments
 
 ### Link Validation
-- **Broken links** → Detect HTTP 404, 500, timeout errors
-- **Missing resources** → Check for missing local files
-- **Invalid URLs** → Detect malformed URL formats
-- **Slow links** → Warn about timeouts and slow responses
+- **Broken External Links** → Detect HTTP 404, 500, timeout errors on external URLs
+  - Invalid URLs → Detect malformed URL formats
+  - Slow links → Warn about timeouts and slow responses
+  - Network errors → Connection failures and unreachable hosts
+- **404 Missing Resources** → Check for missing local files
+  - Images (img src), CSS files (link href), JavaScript files (script src)
+  - Video/audio sources, other local assets
+  - Relative and absolute path checking
+
+### Project Optimization
+- **Unused Files** → Detect files not referenced anywhere in the project
+  - Images, CSS, JavaScript, HTML files
+  - Local file references analysis
+  - Heuristic detection with manual review recommendations
+- **Dead Code Analysis** → Find unused CSS rules and JavaScript functions
+  - CSS selectors not used in HTML
+  - JavaScript functions never called
+  - Variables declared but never used
+  - Smart skipping of dynamic patterns
+- **File Size Analysis** → Check file sizes and suggest optimizations
+  - Detect large files exceeding recommended thresholds
+  - Type-specific optimization suggestions (images, CSS, JS, etc.)
+  - File size breakdown by type
+  - Top 10 largest files reporting
 
 ## 🔧 Package Management
 

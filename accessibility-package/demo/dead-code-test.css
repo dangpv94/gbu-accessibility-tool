@@ -1,0 +1,68 @@
+/* CSS file with mixed used and unused rules */
+
+/* Used classes - these appear in HTML */
+.header {
+    background-color: #333;
+    color: white;
+}
+
+.content {
+    padding: 20px;
+    margin: 0 auto;
+}
+
+/* Unused classes - these don't appear in any HTML */
+.sidebar {
+    width: 300px;
+    background: #f0f0f0;
+}
+
+.popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.modal-overlay {
+    background: rgba(0, 0, 0, 0.5);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* Used tag selectors */
+h1 {
+    font-size: 2em;
+    margin-bottom: 1em;
+}
+
+p {
+    line-height: 1.6;
+}
+
+/* Unused tag selectors */
+article {
+    margin: 20px 0;
+}
+
+aside {
+    float: right;
+    width: 250px;
+}
+
+/* Dynamic classes that should be skipped */
+.active {
+    color: red;
+}
+
+.hidden {
+    display: none;
+}
+
+/* Pseudo-classes that should be skipped */
+.button:hover {
+    background-color: #007bff;
+}

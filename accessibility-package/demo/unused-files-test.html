@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Unused Files Test</title>
+    <!-- Referenced CSS -->
+    <link rel="stylesheet" href="used-style.css">
+    <!-- Referenced JavaScript -->
+    <script src="used-script.js"></script>
+</head>
+<body>
+    <h1>Unused Files Test</h1>
+    
+    <!-- Referenced image -->
+    <img src="used-image.jpg" alt="This image is referenced" role="img" aria-label="This image is referenced">
+    
+    <!-- Referenced local link -->
+    <a href="used-page.html" role="link">This page is referenced</a>
+    
+    <!-- Note: The following files will be detected as unused:
+         - unused-image.png (not referenced anywhere)
+         - unused-style.css (not referenced anywhere)
+         - unused-script.js (not referenced anywhere)
+         - unused-page.html (not referenced anywhere)
+         - orphaned-document.pdf (not referenced anywhere)
+    -->
+    
+    <p>This page references some files but not others. 
+       Run <code>gbu-a11y --unused-files</code> to see which files are not referenced.</p>
+</body>
+</html>

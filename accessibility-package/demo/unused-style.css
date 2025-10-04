@@ -1,0 +1,10 @@
+/* This CSS file is not referenced in any HTML - should be detected as unused */
+.unused-entire-file {
+    color: red;
+    background: blue;
+}
+
+.another-unused-class {
+    margin: 10px;
+    padding: 5px;
+}
