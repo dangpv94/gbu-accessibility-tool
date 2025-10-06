@@ -1,6 +1,6 @@
 {
   "name": "gbu-accessibility-package",
-  "version": "3.8.1",
+  "version": "3.8.7",
   "description": "Comprehensive accessibility fixes and project optimization for HTML files. Smart context-aware alt text generation, form labels, button names, link names, landmarks, heading analysis, WCAG-compliant role attributes, unused files detection, dead code analysis, broken external links detection, and missing local resources detection. Covers major axe DevTools issues with individual fix modes.",
   "main": "index.js",
   "bin": {
@@ -15,6 +15,7 @@
     "alt-only": "node cli.js --alt-only",
     "lang-only": "node cli.js --lang-only",
     "role-only": "node cli.js --role-only",
+    "aria-label-only": "node cli.js --aria-label-only",
     "forms-only": "node cli.js --forms-only",
     "buttons-only": "node cli.js --buttons-only",
     "links-only": "node cli.js --links-only",
@@ -29,11 +30,14 @@
     "cleanup-only": "node cli.js --cleanup-only",
     "no-backup": "node cli.js --no-backup",
     "cleanup-backups": "find . -name '*.backup' -type f -delete",
-    "test": "node test-package.js",
+    "test": "node test-package.cjs",
     "test-enhanced-alt": "node test-enhanced-alt.js",
     "demo": "node cli.js --dry-run demo",
     "demo-enhanced": "node cli.js --enhanced-alt --dry-run demo",
     "demo-creative": "node cli.js --enhanced-alt --alt-creativity creative --include-emotions --dry-run demo",
+    "test-local": "./test-local-projects.sh",
+    "test-unused-files": "./test-unused-files.sh",
+    "test-pack": "npm pack && echo 'Package created. Install in test project with: npm install ./gbu-accessibility-package-$(node -p \"require('./package.json').version\").tgz'",
     "prepublishOnly": "npm run test"
   },
   "keywords": [

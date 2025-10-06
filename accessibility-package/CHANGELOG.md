@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.3] - 2025-10-06
+
+### Added
+- **Separate Aria-Label Functionality**: Split aria-label handling into dedicated `--aria-label-only` command
+  - **Independent command**: `gbu-a11y --aria-label-only` for focused aria-label fixes
+  - **Smart aria-label generation**: Creates aria-labels from alt text for images
+  - **Button aria-labels**: Adds aria-labels to buttons using their text content
+  - **Link aria-labels**: Improves generic links with meaningful aria-labels from context
+  - **Separation from role fixes**: `--role-only` now only handles roles, not aria-labels
+  - **Comprehensive mode updated**: Added aria-label step to complete accessibility workflow
+
+### Changed
+- **Role-only behavior**: `--role-only` no longer automatically adds aria-label attributes
+- **Cleaner separation**: Role and aria-label fixes are now completely independent
+- **Enhanced comprehensive mode**: Added dedicated Step 4 for aria-label processing
+
+## [3.8.2] - 2025-10-06
+
+### Enhanced
+- **Comprehensive Unused Files Detection**: Major upgrade to `--unused-files` feature
+  - **Project-wide scanning**: Now scans from project root instead of current directory only
+  - **Cross-reference detection**: Finds references across HTML, CSS, JavaScript, JSON, TypeScript, and other source files
+  - **Multiple path format support**: Handles relative paths, absolute paths, ES6 imports, CommonJS requires
+  - **Smart file resolution**: Resolves import paths with automatic extension detection and index files
+  - **Enhanced source file types**: Supports .jsx, .tsx, .vue, .php, .md, .xml, .svg files for reference detection
+  - **Better performance**: Optimized scanning with progress indicators and timing information
+
 ## [3.8.1] - 2025-10-04
 
 ### Changed

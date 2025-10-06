@@ -2,7 +2,9 @@
 
 🚀 **Tự động sửa lỗi accessibility cho file HTML** - Cải thiện accessibility thông minh, nhận biết ngữ cảnh với cấu hình zero.
 
-[![npm version](https://badge.fury.io/js/gbu-accessibility-package.svg)](https://www.npmjs.com/package/gbu-accessibility-package)
+[![npm version](https://badge.furgbu-a11y --role-only          # Sửa role attributes + dọn dẹp
+gbu-a11y --aria-label-only    # Sửa aria-label attributes + dọn dẹp
+gbu-a11y --forms-only        # Sửa form labels + dọn dẹpio/js/gbu-accessibility-package.svg)](https://www.npmjs.com/package/gbu-accessibility-package)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D12.0.0-brightgreen)](https://nodejs.org/)
 
@@ -13,7 +15,8 @@
 - 🖼️ **Tạo Alt Text thông minh** - Alt attributes nhận biết ngữ cảnh cho hình ảnh
 - 🏷️ **Hỗ trợ Aria Label** - Tự động tạo aria-label phù hợp với alt text
 - 🌐 **HTML Lang Attributes** - Tự động sửa thuộc tính ngôn ngữ
-- 🎭 **Role Attributes** - Quản lý role attributes tuân thủ WCAG
+- 🎭 **Role Attributes** - Quản lý role attributes tuân thủ WCAG  
+- 🏷️ **Aria Labels** - Tự động tạo aria-label từ alt text và nội dung
 - 📋 **Form Labels** - Sửa labels thiếu với tạo aria-label thông minh
 - 🔘 **Button Names** - Sửa buttons rỗng và input buttons không có tên
 - 🔗 **Link Names** - Sửa links rỗng và phát hiện text generic
@@ -149,6 +152,7 @@ Chế độ sửa lỗi:
   --alt-only               Sửa alt attributes + dọn dẹp
   --lang-only              Sửa HTML lang attributes + dọn dẹp
   --role-only              Sửa role attributes + dọn dẹp
+  --aria-label-only        Sửa aria-label attributes + dọn dẹp
   --forms-only             Sửa form labels + dọn dẹp
   --buttons-only           Sửa button names + dọn dẹp
   --links-only             Sửa link names + dọn dẹp
@@ -171,6 +175,7 @@ Tùy chọn Enhanced Alt:
 
 Trợ giúp:
   -h, --help               Hiển thị thông điệp trợ giúp
+  -v, --version            Hiển thị số phiên bản
 ```
 
 ### Ví dụ
@@ -356,15 +361,18 @@ await fixer.checkFileSizes('./src');
 
 ### Tối ưu hóa dự án
 
-- **File không sử dụng** → Phát hiện file không được tham chiếu ở đâu trong dự án
-  - Hình ảnh, CSS, JavaScript, HTML files
-  - Phân tích tham chiếu file local
-  - Phát hiện heuristic với khuyến nghị xem xét thủ công
-- **Phân tích Dead Code** → Tìm CSS rules và JavaScript functions không sử dụng
-  - CSS selectors không được sử dụng trong HTML
-  - JavaScript functions không bao giờ được gọi
+- **File không sử dụng** → Phát hiện file không được tham chiếu ở đâu trong toàn bộ dự án
+  - **File types được kiểm tra**: Hình ảnh, CSS, SCSS/Sass, JavaScript, JSX, TypeScript, Vue, PHP, JSON, Markdown, XML, PDF, Video, Audio files (không bao gồm HTML)
+  - **Quét toàn diện**: Phân tích từ project root, không giới hạn thư mục hiện tại
+  - **Cross-reference detection**: Tìm tham chiếu từ HTML, CSS, JavaScript, JSON, và các file khác
+  - **Multiple path formats**: Hỗ trợ relative paths, absolute paths, imports, requires
+  - **Smart file resolution**: Xử lý ES6 imports, CommonJS requires, và dynamic imports
+  - **Phân tích heuristic**: Khuyến nghị xem xét thủ công cho các file có thể được tham chiếu động
+- **Phân tích Dead Code** → Tìm CSS rules và JavaScript functions không sử dụng toàn project
+  - CSS selectors không được sử dụng trong bất kỳ HTML file nào
+  - JavaScript functions không bao giờ được gọi trong toàn bộ codebase
   - Variables được khai báo nhưng không sử dụng
-  - Smart skipping các patterns động
+  - Smart skipping các patterns động và third-party code
 - **Phân tích dung lượng file** → Kiểm tra kích thước file và đề xuất tối ưu hóa
   - Phát hiện file lớn vượt ngưỡng khuyến nghị
   - Đề xuất tối ưu hóa theo từng loại file (hình ảnh, CSS, JS, v.v.)

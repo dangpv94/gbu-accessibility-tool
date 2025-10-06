@@ -11,10 +11,10 @@
     <a href="https://www.google.com" role="link">Google (should work)</a>
     
     <!-- Broken external link -->
-    <a href="https://this-domain-does-not-exist-12345.com" role="link">Broken external link (should fail)</a>
+    <a href="https://this-domain-does-not-exist-12345.com" role="link" aria-label="Link to this-domain-does-not-exist-12345.com">Broken external link (should fail)</a>
     
     <!-- Local link (should be skipped in external-only mode) -->
-    <a href="sample.html" role="link">Local link (should be skipped)</a>
+    <a href="sample.html" role="link" aria-label="Local link (should be skipped)">Local link (should be skipped)</a>
     
     <!-- Local image (should be skipped in external-only mode) -->
     <img src="missing-image.jpg" alt="Local image (should be skipped)" role="img" aria-label="Local image (should be skipped)">

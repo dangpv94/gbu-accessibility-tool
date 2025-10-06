@@ -1451,6 +1451,136 @@ class AccessibilityFixer {
     return results;
   }
 
+  // Fix aria-labels for images and other elements
+  async fixAriaLabels(directory = '.') {
+    console.log(chalk.blue('🏷️ Fixing aria-label attributes...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    let totalIssuesFound = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const fixed = this.fixAriaLabelsInContent(content);
+        
+        if (fixed.content !== content) {
+          if (!this.config.dryRun) {
+            if (this.config.backupFiles) {
+              await fs.writeFile(`${file}.backup`, content);
+            }
+            await fs.writeFile(file, fixed.content);
+          }
+          
+          console.log(chalk.green(`✅ Fixed aria-label attributes in: ${file}`));
+          totalIssuesFound += fixed.changes;
+        }
+        
+        results.push({ file, status: 'processed', changes: fixed.changes });
+      } catch (error) {
+        console.error(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} aria-label issues across ${results.length} files`));
+    return results;
+  }
+
+  fixAriaLabelsInContent(content) {
+    let fixed = content;
+    let changes = 0;
+    
+    // Fix images - add aria-label from alt text
+    fixed = fixed.replace(
+      /<img([^>]*>)/gi,
+      (match) => {
+        // Check if aria-label already exists
+        if (/aria-label\s*=/i.test(match)) {
+          return match; // Return unchanged if aria-label already exists
+        }
+        
+        // Extract alt text to use for aria-label
+        const altMatch = match.match(/alt\s*=\s*["']([^"']*)["']/i);
+        if (altMatch && altMatch[1].trim()) {
+          const altText = altMatch[1].trim();
+          const updatedImg = match.replace(/(<img[^>]*?)(\s*>)/i, `$1 aria-label="${altText}"$2`);
+          console.log(chalk.yellow(`  🏷️ Added aria-label="${altText}" to image element`));
+          changes++;
+          return updatedImg;
+        }
+        
+        return match;
+      }
+    );
+    
+    // Fix buttons without aria-label but with text content
+    fixed = fixed.replace(
+      /<button([^>]*>)(.*?)<\/button>/gi,
+      (match, attributes, content) => {
+        // Skip if aria-label already exists
+        if (/aria-label\s*=/i.test(attributes)) {
+          return match;
+        }
+        
+        // Extract text content for aria-label
+        const textContent = content.replace(/<[^>]*>/g, '').trim();
+        if (textContent) {
+          const updatedButton = match.replace(/(<button[^>]*?)(\s*>)/i, `$1 aria-label="${textContent}"$2`);
+          console.log(chalk.yellow(`  🏷️ Added aria-label="${textContent}" to button element`));
+          changes++;
+          return updatedButton;
+        }
+        
+        return match;
+      }
+    );
+    
+    // Fix links without aria-label but with text content
+    fixed = fixed.replace(
+      /<a([^>]*href[^>]*>)(.*?)<\/a>/gi,
+      (match, attributes, content) => {
+        // Skip if aria-label already exists
+        if (/aria-label\s*=/i.test(attributes)) {
+          return match;
+        }
+        
+        // Skip if it's just text content (not generic)
+        const textContent = content.replace(/<[^>]*>/g, '').trim();
+        const genericTexts = ['link', 'click here', 'read more', 'more info', 'here', 'this'];
+        
+        if (textContent && genericTexts.some(generic => 
+          textContent.toLowerCase().includes(generic.toLowerCase()))) {
+          // Extract meaningful context or use href for generic links
+          const hrefMatch = attributes.match(/href\s*=\s*["']([^"']*)["']/i);
+          if (hrefMatch && hrefMatch[1]) {
+            const href = hrefMatch[1];
+            let ariaLabel = textContent;
+            
+            // Improve generic link text
+            if (href.includes('mailto:')) {
+              ariaLabel = `Email: ${href.replace('mailto:', '')}`;
+            } else if (href.includes('tel:')) {
+              ariaLabel = `Phone: ${href.replace('tel:', '')}`;
+            } else if (href.startsWith('http')) {
+              const domain = new URL(href).hostname;
+              ariaLabel = `Link to ${domain}`;
+            }
+            
+            const updatedLink = match.replace(/(<a[^>]*?)(\s*>)/i, `$1 aria-label="${ariaLabel}"$2`);
+            console.log(chalk.yellow(`  🏷️ Added aria-label="${ariaLabel}" to link element`));
+            changes++;
+            return updatedLink;
+          }
+        }
+        
+        return match;
+      }
+    );
+    
+    return { content: fixed, changes };
+  }
+
   async addMainLandmarks(directory = '.') {
     console.log(chalk.yellow('🏗️ Main landmark detection (manual review required)...'));
     
@@ -2014,33 +2144,18 @@ class AccessibilityFixer {
     // Fix picture elements with img children - move role from picture to img
     fixed = this.fixPictureImgRoles(fixed);
     
-    // Fix all images - add role="img" and aria-label
+    // Fix all images - add role="img" only
     fixed = fixed.replace(
       /<img([^>]*>)/gi,
       (match) => {
-        let updatedImg = match;
-        let hasChanges = false;
-        
         // Check if role attribute already exists
         if (!/role\s*=/i.test(match)) {
-          updatedImg = updatedImg.replace(/(<img[^>]*?)(\s*>)/i, '$1 role="img"$2');
+          const updatedImg = match.replace(/(<img[^>]*?)(\s*>)/i, '$1 role="img"$2');
           console.log(chalk.yellow(`  🖼️ Added role="img" to image element`));
-          hasChanges = true;
+          return updatedImg;
         }
         
-        // Check if aria-label already exists
-        if (!/aria-label\s*=/i.test(match)) {
-          // Extract alt text to use for aria-label
-          const altMatch = match.match(/alt\s*=\s*["']([^"']*)["']/i);
-          if (altMatch && altMatch[1].trim()) {
-            const altText = altMatch[1].trim();
-            updatedImg = updatedImg.replace(/(<img[^>]*?)(\s*>)/i, `$1 aria-label="${altText}"$2`);
-            console.log(chalk.yellow(`  🏷️ Added aria-label="${altText}" to image element`));
-            hasChanges = true;
-          }
-        }
-        
-        return updatedImg;
+        return match;
       }
     );
     
@@ -4390,70 +4505,77 @@ class AccessibilityFixer {
       const totalRoleIssues = roleResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 3, name: 'Role attributes', fixed: roleFixed, issues: totalRoleIssues });
       
-      // Step 4: Form labels
-      console.log(chalk.blue('📋 Step 4: Form labels...'));
+      // Step 4: Aria-label attributes
+      console.log(chalk.blue('🏷️ Step 4: Aria-label attributes...'));
+      const ariaResults = await this.fixAriaLabels(directory);
+      const ariaFixed = ariaResults.filter(r => r.status === 'processed' && r.changes > 0).length;
+      const totalAriaIssues = ariaResults.reduce((sum, r) => sum + (r.changes || 0), 0);
+      results.steps.push({ step: 4, name: 'Aria-label attributes', fixed: ariaFixed, issues: totalAriaIssues });
+      
+      // Step 5: Form labels
+      console.log(chalk.blue('📋 Step 5: Form labels...'));
       const formResults = await this.fixFormLabels(directory);
       const formFixed = formResults.filter(r => r.status === 'fixed').length;
       const totalFormIssues = formResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-      results.steps.push({ step: 4, name: 'Form labels', fixed: formFixed, issues: totalFormIssues });
+      results.steps.push({ step: 5, name: 'Form labels', fixed: formFixed, issues: totalFormIssues });
       
-      // Step 5: Nested interactive controls (NEW!)
-      console.log(chalk.blue('🎯 Step 5: Nested interactive controls...'));
+      // Step 6: Nested interactive controls (NEW!)
+      console.log(chalk.blue('🎯 Step 6: Nested interactive controls...'));
       const nestedResults = await this.fixNestedInteractiveControls(directory);
       const nestedFixed = nestedResults.filter(r => r.status === 'fixed').length;
       const totalNestedIssues = nestedResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-      results.steps.push({ step: 5, name: 'Nested interactive controls', fixed: nestedFixed, issues: totalNestedIssues });
+      results.steps.push({ step: 6, name: 'Nested interactive controls', fixed: nestedFixed, issues: totalNestedIssues });
       
-      // Step 6: Button names
-      console.log(chalk.blue('🔘 Step 6: Button names...'));
+      // Step 7: Button names
+      console.log(chalk.blue('🔘 Step 7: Button names...'));
       const buttonResults = await this.fixButtonNames(directory);
       const buttonFixed = buttonResults.filter(r => r.status === 'fixed').length;
       const totalButtonIssues = buttonResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-      results.steps.push({ step: 6, name: 'Button names', fixed: buttonFixed, issues: totalButtonIssues });
+      results.steps.push({ step: 7, name: 'Button names', fixed: buttonFixed, issues: totalButtonIssues });
       
-      // Step 7: Link names
-      console.log(chalk.blue('🔗 Step 7: Link names...'));
+      // Step 8: Link names
+      console.log(chalk.blue('🔗 Step 8: Link names...'));
       const linkResults = await this.fixLinkNames(directory);
       const linkFixed = linkResults.filter(r => r.status === 'fixed').length;
       const totalLinkIssues = linkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-      results.steps.push({ step: 7, name: 'Link names', fixed: linkFixed, issues: totalLinkIssues });
+      results.steps.push({ step: 8, name: 'Link names', fixed: linkFixed, issues: totalLinkIssues });
       
-      // Step 8: Landmarks
-      console.log(chalk.blue('🏛️ Step 8: Landmarks...'));
+      // Step 9: Landmarks
+      console.log(chalk.blue('🏛️ Step 9: Landmarks...'));
       const landmarkResults = await this.fixLandmarks(directory);
       const landmarkFixed = landmarkResults.filter(r => r.status === 'fixed').length;
       const totalLandmarkIssues = landmarkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-      results.steps.push({ step: 8, name: 'Landmarks', fixed: landmarkFixed, issues: totalLandmarkIssues });
+      results.steps.push({ step: 9, name: 'Landmarks', fixed: landmarkFixed, issues: totalLandmarkIssues });
       
-      // Step 9: Heading analysis
-      console.log(chalk.blue('📑 Step 9: Heading analysis...'));
+      // Step 10: Heading analysis
+      console.log(chalk.blue('📑 Step 10: Heading analysis...'));
       const headingResults = await this.analyzeHeadings(directory);
       const totalHeadingSuggestions = headingResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-      results.steps.push({ step: 9, name: 'Heading analysis', suggestions: totalHeadingSuggestions });
+      results.steps.push({ step: 10, name: 'Heading analysis', suggestions: totalHeadingSuggestions });
       console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
       
-      // Step 10: Broken links and missing resources check
-      console.log(chalk.blue('🔗 Step 10a: External links check...'));
+      // Step 11: Broken links and missing resources check
+      console.log(chalk.blue('🔗 Step 11a: External links check...'));
       const brokenLinksResults = await this.checkBrokenLinks(directory);
       const totalBrokenLinks = brokenLinksResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-      results.steps.push({ step: '10a', name: 'External links check', issues: totalBrokenLinks });
+      results.steps.push({ step: '11a', name: 'External links check', issues: totalBrokenLinks });
       
-      console.log(chalk.blue('📁 Step 10b: Missing resources check...'));
+      console.log(chalk.blue('📁 Step 11b: Missing resources check...'));
       const missingResourcesResults = await this.check404Resources(directory);
       const totalMissingResources = missingResourcesResults.reduce((sum, r) => sum + (r.issues || 0), 0);
-      results.steps.push({ step: '10b', name: 'Missing resources check', issues: totalMissingResources });
+      results.steps.push({ step: '11b', name: 'Missing resources check', issues: totalMissingResources });
       
       console.log(chalk.gray('💡 Link and resource issues require manual review and cannot be auto-fixed'));
       
-      // Step 11: Cleanup duplicate roles
-      console.log(chalk.blue('🧹 Step 11: Cleanup duplicate roles...'));
+      // Step 12: Cleanup duplicate roles
+      console.log(chalk.blue('🧹 Step 12: Cleanup duplicate roles...'));
       const cleanupResults = await this.cleanupDuplicateRoles(directory);
       const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
-      results.steps.push({ step: 11, name: 'Cleanup duplicate roles', fixed: cleanupFixed });
+      results.steps.push({ step: 12, name: 'Cleanup duplicate roles', fixed: cleanupFixed });
       
       // Calculate totals
       results.totalFiles = Math.max(
-        langResults.length, altResults.length, roleResults.length, formResults.length,
+        langResults.length, altResults.length, roleResults.length, ariaResults.length, formResults.length,
         nestedResults.length, buttonResults.length, linkResults.length, landmarkResults.length, 
         headingResults.length, brokenLinksResults.length, cleanupResults.length
       );
@@ -5531,56 +5653,141 @@ class AccessibilityFixer {
     return files;
   }
 
-  // Check for unused files in the project
+  // Check for unused files in the project - enhanced for comprehensive project-wide scanning
   async checkUnusedFiles(directory = '.') {
-    console.log(chalk.blue('🗂️ Checking for unused files...'));
+    console.log(chalk.blue('🗂️ Analyzing unused files across entire project...'));
     
-    const results = [];
-    const allFiles = await this.findAllProjectFiles(directory);
-    const referencedFiles = await this.findReferencedFiles(directory);
+    const startTime = Date.now();
     
-    // Normalize paths for comparison
-    const normalizedReferenced = new Set();
-    referencedFiles.forEach(file => {
-      normalizedReferenced.add(path.resolve(file));
-    });
+    // Determine scan directory - use specified directory or project root for comprehensive scanning
+    const scanDirectory = path.resolve(directory);
+    console.log(chalk.gray(`📁 Scanning directory: ${path.relative(process.cwd(), scanDirectory) || '.'}`));
+    
+    // Get all project files from scan directory
+    const allFiles = await this.findAllProjectFiles(scanDirectory);
+    console.log(chalk.gray(`📊 Found ${allFiles.length} total files in scan area`));
+    
+    // Get referenced files from scan directory
+    const referencedFiles = await this.findReferencedFiles(scanDirectory);
+    console.log(chalk.gray(`🔍 Found ${referencedFiles.size} referenced files`));
+    
+
+    
+    // Find unused files
+    const unusedFiles = [];
     
     for (const file of allFiles) {
-      const absolutePath = path.resolve(file);
-      
-      // Skip certain files that are typically not referenced directly
+      // Skip certain directories and files that shouldn't be considered "unused"
       if (this.shouldSkipUnusedCheck(file)) {
         continue;
       }
       
-      if (!normalizedReferenced.has(absolutePath)) {
-        const relativePath = path.relative(directory, file);
+      // Check if file is referenced anywhere in the scan area
+      const relativePath = path.relative(scanDirectory, file);
+      const isReferenced = this.isFileReferenced(file, relativePath, referencedFiles, scanDirectory);
+      
+
+      
+      if (!isReferenced) {
+        const stats = await require('fs').promises.stat(file);
+        const fileSize = this.formatFileSize(stats.size);
         const fileType = this.getFileType(file);
         
-        console.log(chalk.yellow(`  🗑️ Unused ${fileType}: ${relativePath}`));
-        
-        results.push({
-          type: `🗑️ Unused ${fileType}`,
-          description: `File not referenced anywhere: ${relativePath}`,
-          suggestion: `Consider removing if truly unused: ${relativePath}`,
-          filePath: file,
-          fileType: fileType,
-          relativePath: relativePath
+        unusedFiles.push({
+          path: file,
+          relativePath: relativePath,
+          size: stats.size,
+          formattedSize: fileSize,
+          type: fileType,
+          description: `File not referenced anywhere in project: ${relativePath}`,
+          suggestion: `Consider removing if truly unused: ${relativePath}`
         });
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${results.length} potentially unused files`));
-    console.log(chalk.gray('💡 Review carefully before removing - some files may be referenced dynamically'));
+    // Sort by size (largest first)
+    unusedFiles.sort((a, b) => b.size - a.size);
     
-    return results;
+    // Display results
+    if (unusedFiles.length === 0) {
+      console.log(chalk.green('✅ No unused files found! All files are properly referenced.'));
+    } else {
+      console.log(chalk.yellow(`\n📋 Found ${unusedFiles.length} potentially unused files:`));
+      
+      unusedFiles.forEach((file, index) => {
+        const icon = this.getFileIcon(file.type);
+        console.log(chalk.yellow(`  ${index + 1}. ${icon} ${file.relativePath} (${file.formattedSize})`));
+      });
+      
+      const totalSize = unusedFiles.reduce((sum, file) => sum + file.size, 0);
+      console.log(chalk.blue(`\n📊 Total unused file size: ${this.formatFileSize(totalSize)}`));
+      console.log(chalk.gray('💡 Review these files before deleting - some may be used dynamically or required for deployment'));
+    }
+    
+    const endTime = Date.now();
+    console.log(chalk.gray(`⏱️ Analysis completed in ${endTime - startTime}ms`));
+    
+    return {
+      unusedFiles: unusedFiles,
+      totalFiles: allFiles.length,
+      referencedFiles: referencedFiles.size,
+      unusedCount: unusedFiles.length,
+      totalUnusedSize: unusedFiles.reduce((sum, file) => sum + file.size, 0)
+    };
+  }
+
+  // Enhanced file reference checking - now works with relative paths
+  isFileReferenced(filePath, relativePath, referencedFiles, projectRoot) {
+    // Check various possible reference formats
+    const possibleRefs = [
+      relativePath,                                    // relative/to/file.ext
+      '/' + relativePath,                              // /relative/to/file.ext  
+      './' + relativePath,                             // ./relative/to/file.ext
+      '../' + relativePath,                            // ../relative/to/file.ext
+      path.basename(filePath),                         // file.ext
+      '/' + path.basename(filePath),                   // /file.ext
+      relativePath.replace(/\\/g, '/'),                // normalize windows paths
+      '/' + relativePath.replace(/\\/g, '/'),          // /normalized/path
+      relativePath.replace(/^\.\//, ''),               // remove leading ./
+      relativePath.replace(/^\//, ''),                 // remove leading /
+    ];
+    
+    // Check if any reference format exists in the set
+    for (const ref of possibleRefs) {
+      if (referencedFiles.has(ref)) {
+        return true;
+      }
+    }
+    
+    // Additional checks for path variations
+    const fileName = path.basename(filePath);
+    const relativeDir = path.dirname(relativePath);
+    
+    // Check for references that might include parent directory names
+    for (const ref of referencedFiles) {
+      // If reference ends with the filename, check if path context matches
+      if (ref.endsWith('/' + fileName) || ref === fileName) {
+        return true;
+      }
+      
+      // Check for absolute paths that correspond to our relative path
+      if (ref.startsWith('/') && ref.includes(fileName)) {
+        const refWithoutLeading = ref.substring(1);
+        if (refWithoutLeading === relativePath || refWithoutLeading.endsWith('/' + fileName)) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
   }
 
   async findAllProjectFiles(directory) {
     const files = [];
-    const extensions = ['.html', '.css', '.js', '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.ico', '.pdf', '.mp4', '.webm', '.mp3', '.wav'];
+    // Only check web assets: CSS, HTML, JS, and images
+    const extensions = ['.css', '.html', '.htm', '.js', '.jsx', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico'];
     
-    async function scan(dir) {
+    const scan = async (dir) => {
       try {
         const entries = await fs.readdir(dir, { withFileTypes: true });
         
@@ -5601,68 +5808,113 @@ class AccessibilityFixer {
         }
       } catch (error) {
         // Skip directories we can't read
+        console.log(chalk.gray(`⚠️ Skipping directory ${dir}: ${error.message}`));
       }
-    }
+    };
     
-    await scan.call(this, directory);
+    await scan(directory);
     return files;
   }
 
+  // Enhanced reference finding across entire project
   async findReferencedFiles(directory) {
-    const referenced = new Set();
-    const htmlFiles = await this.findHtmlFiles(directory);
-    const cssFiles = await this.findCssFiles(directory);
-    const jsFiles = await this.findJsFiles(directory);
+    const referencedFiles = new Set();
     
-    // Find references in HTML files
-    for (const htmlFile of htmlFiles) {
+    // Find all source files that could contain references
+    const sourceFiles = await this.findSourceFiles(directory);
+    console.log(chalk.gray(`🔍 Scanning ${sourceFiles.length} source files for references...`));
+    
+    for (const sourceFile of sourceFiles) {
       try {
-        const content = await fs.readFile(htmlFile, 'utf8');
-        const refs = this.extractFileReferences(content, path.dirname(htmlFile));
-        refs.forEach(ref => referenced.add(ref));
+        const content = await fs.readFile(sourceFile, 'utf-8');
+        const baseDir = path.dirname(sourceFile);
+        
+        // Extract references based on file type
+        const refs = this.extractAllReferences(content, baseDir, sourceFile);
+        refs.forEach(ref => referencedFiles.add(ref));
+        
       } catch (error) {
-        // Skip files we can't read
+        console.log(chalk.gray(`⚠️ Could not read ${sourceFile}: ${error.message}`));
       }
     }
     
-    // Find references in CSS files
-    for (const cssFile of cssFiles) {
-      try {
-        const content = await fs.readFile(cssFile, 'utf8');
-        const refs = this.extractCssReferences(content, path.dirname(cssFile));
-        refs.forEach(ref => referenced.add(ref));
-      } catch (error) {
-        // Skip files we can't read
-      }
-    }
-    
-    // Find references in JS files
-    for (const jsFile of jsFiles) {
-      try {
-        const content = await fs.readFile(jsFile, 'utf8');
-        const refs = this.extractJsReferences(content, path.dirname(jsFile));
-        refs.forEach(ref => referenced.add(ref));
-      } catch (error) {
-        // Skip files we can't read
-      }
-    }
-    
-    return Array.from(referenced);
+    return referencedFiles;
   }
 
-  extractFileReferences(content, baseDir) {
+  // Find HTML and CSS/SCSS files to scan for references
+  async findSourceFiles(directory) {
+    const sourceFiles = [];
+    
+    const walk = async (dir) => {
+      try {
+        const files = await fs.readdir(dir);
+        
+        for (const file of files) {
+          const filePath = path.join(dir, file);
+          const stat = await fs.stat(filePath);
+          
+          if (stat.isDirectory()) {
+            if (!this.shouldSkipDirectory(file)) {
+              await walk(filePath);
+            }
+          } else {
+            // Include HTML (main entry) and CSS/SCSS (for background images)
+            const ext = path.extname(file).toLowerCase();
+            if (['.html', '.htm', '.css', '.scss', '.sass'].includes(ext)) {
+              sourceFiles.push(filePath);
+            }
+          }
+        }
+      } catch (error) {
+        console.log(chalk.gray(`⚠️ Could not read directory ${dir}: ${error.message}`));
+      }
+    };
+    
+    await walk(directory);
+    return sourceFiles;
+  }
+
+  // Enhanced reference extraction from HTML and CSS files
+  extractAllReferences(content, baseDir, sourceFile) {
+    const references = [];
+    const ext = path.extname(sourceFile).toLowerCase();
+    
+    if (['.html', '.htm'].includes(ext)) {
+      // Extract from HTML files - main entry points
+      const htmlRefs = this.extractHtmlReferences(content, baseDir);
+      references.push(...htmlRefs);
+      
+    } else if (['.css', '.scss', '.sass'].includes(ext)) {
+      // Extract from CSS/SCSS files - background images
+      const cssRefs = this.extractCssReferences(content, baseDir);
+      references.push(...cssRefs);
+    }
+    
+    return references;
+  }
+
+  extractHtmlReferences(content, baseDir) {
     const references = [];
     
     // HTML patterns for file references
     const patterns = [
       // Images
       /<img[^>]*src\s*=\s*["']([^"']+)["']/gi,
+      // Srcset (responsive images)
+      /<img[^>]*srcset\s*=\s*["']([^"']+)["']/gi,
+      /<source[^>]*srcset\s*=\s*["']([^"']+)["']/gi,
+      // Data attributes (lazy loading, etc.)
+      /data-src\s*=\s*["']([^"']+)["']/gi,
+      /data-background\s*=\s*["']([^"']+)["']/gi,
+      /data-image\s*=\s*["']([^"']+)["']/gi,
+      /data-bg\s*=\s*["']([^"']+)["']/gi,
+      /data-lazy\s*=\s*["']([^"']+)["']/gi,
       // Links (CSS, other files)
       /<link[^>]*href\s*=\s*["']([^"']+)["']/gi,
       // Scripts
       /<script[^>]*src\s*=\s*["']([^"']+)["']/gi,
-      // Anchors
-      /<a[^>]*href\s*=\s*["']([^"']+)["']/gi,
+      // Anchors to other HTML files
+      /<a[^>]*href\s*=\s*["']([^"'#]+\.html?)["']/gi,
       // Video/Audio
       /<(?:video|audio)[^>]*src\s*=\s*["']([^"']+)["']/gi,
       // Object/Embed
@@ -5677,10 +5929,18 @@ class AccessibilityFixer {
       let match;
       while ((match = pattern.exec(content)) !== null) {
         const url = match[1];
-        if (this.isLocalFile(url)) {
-          const resolvedPath = this.resolveFilePath(url, baseDir);
-          if (resolvedPath) {
-            references.push(resolvedPath);
+        
+        // Handle srcset format: "image1.jpg 1x, image2.jpg 2x"
+        if (pattern.source.includes('srcset')) {
+          const srcsetUrls = url.split(',').map(item => item.trim().split(' ')[0]);
+          srcsetUrls.forEach(srcUrl => {
+            if (this.isLocalFile(srcUrl)) {
+              this.addNormalizedUrl(references, srcUrl);
+            }
+          });
+        } else {
+          if (this.isLocalFile(url)) {
+            this.addNormalizedUrl(references, url);
           }
         }
       }
@@ -5689,15 +5949,29 @@ class AccessibilityFixer {
     return references;
   }
 
+  // Helper method to add normalized URL variations
+  addNormalizedUrl(references, url) {
+    // Store original URL and normalized versions for matching
+    references.push(url);
+    if (url.startsWith('/')) {
+      references.push(url.substring(1)); // Remove leading slash
+    }
+    if (!url.startsWith('./') && !url.startsWith('/')) {
+      references.push('./' + url); // Add leading ./
+    }
+  }
+
   extractCssReferences(content, baseDir) {
     const references = [];
     
-    // CSS patterns for file references
+    // CSS patterns for file references  
     const patterns = [
-      // url() function
+      // url() function - background images, fonts, etc.
       /url\s*\(\s*["']?([^"')]+)["']?\s*\)/gi,
-      // @import
-      /@import\s+["']([^"']+)["']/gi
+      // @import CSS files
+      /@import\s+["']([^"']+)["']/gi,
+      // CSS custom properties with URLs
+      /--[^:]+:\s*url\s*\(\s*["']?([^"')]+)["']?\s*\)/gi
     ];
     
     for (const pattern of patterns) {
@@ -5705,10 +5979,7 @@ class AccessibilityFixer {
       while ((match = pattern.exec(content)) !== null) {
         const url = match[1];
         if (this.isLocalFile(url)) {
-          const resolvedPath = this.resolveFilePath(url, baseDir);
-          if (resolvedPath) {
-            references.push(resolvedPath);
-          }
+          this.addNormalizedUrl(references, url);
         }
       }
     }
@@ -5736,9 +6007,13 @@ class AccessibilityFixer {
       while ((match = pattern.exec(content)) !== null) {
         const url = match[1];
         if (this.isLocalFile(url)) {
-          const resolvedPath = this.resolveFilePath(url, baseDir);
-          if (resolvedPath) {
-            references.push(resolvedPath);
+          // Store both original URL and normalized versions for matching
+          references.push(url);
+          if (url.startsWith('/')) {
+            references.push(url.substring(1)); // Remove leading slash
+          }
+          if (!url.startsWith('./') && !url.startsWith('/')) {
+            references.push('./' + url); // Add leading ./
           }
         }
       }
@@ -5809,15 +6084,25 @@ class AccessibilityFixer {
   shouldSkipUnusedCheck(filePath) {
     const fileName = path.basename(filePath);
     const dirName = path.basename(path.dirname(filePath));
+    const relativePath = path.relative(process.cwd(), filePath);
     
-    // Skip certain file types and patterns
+    // Skip index files - they are main entry points
+    if (/^index\d*\.(html?|htm)$/i.test(fileName)) {
+      return true;
+    }
+    
+    // Skip OGP images - usually referenced with absolute paths in meta tags
+    if (/^ogp\.(png|jpg|jpeg)$/i.test(fileName)) {
+      return true;
+    }
+    
+    // Skip certain file types and patterns - but only in root directory
     const skipPatterns = [
-      // Common files that might not be directly referenced
-      /^(index|main|app)\.(html|js|css)$/i,
+      // Common files that might not be directly referenced - only in root
+      /^(main|app)\.(html|js|css)$/i,
       /^(readme|license|changelog)/i,
       /^package\.json$/i,
       /^\.gitignore$/i,
-      /^favicon\.(ico|png)$/i,
       /^robots\.txt$/i,
       /^sitemap\.xml$/i,
       // Backup files
@@ -5825,6 +6110,11 @@ class AccessibilityFixer {
       // Test directories
       /test|spec|__tests__/i
     ];
+    
+    // Only skip favicon in root directory, not in assets folders
+    if (/^favicon\.(ico|png)$/i.test(fileName) && !relativePath.includes('/')) {
+      return true;
+    }
     
     return skipPatterns.some(pattern => 
       pattern.test(fileName) || pattern.test(dirName)
@@ -6491,6 +6781,128 @@ class AccessibilityFixer {
       });
     
     return sortedBreakdown;
+  }
+
+  // Extract import/require statements
+  extractImportReferences(content, baseDir) {
+    const references = [];
+    
+    // ES6 imports and CommonJS requires
+    const importPatterns = [
+      /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g,
+      /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+      /require\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+      /import\s+['"]([^'"]+)['"]/g
+    ];
+    
+    importPatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(content)) !== null) {
+        const importPath = match[1];
+        
+        // Skip npm packages (don't start with . or /)
+        if (!importPath.startsWith('.') && !importPath.startsWith('/')) {
+          continue;
+        }
+        
+        // Resolve the import path
+        const resolved = this.resolveImportPath(importPath, baseDir);
+        if (resolved) {
+          references.push(resolved);
+        }
+      }
+    });
+    
+    return references;
+  }
+
+  // Extract JSON references
+  extractJsonReferences(content, baseDir) {
+    const references = [];
+    
+    try {
+      const json = JSON.parse(content);
+      
+      // Extract file references from JSON values
+      const extractFromObject = (obj) => {
+        if (typeof obj === 'string') {
+          // Check if it looks like a file path
+          if (obj.includes('.') && (obj.includes('/') || obj.includes('\\'))) {
+            const resolved = this.resolveFilePath(obj, baseDir);
+            if (resolved) {
+              references.push(resolved);
+            }
+          }
+        } else if (typeof obj === 'object' && obj !== null) {
+          Object.values(obj).forEach(value => {
+            if (Array.isArray(value)) {
+              value.forEach(extractFromObject);
+            } else {
+              extractFromObject(value);
+            }
+          });
+        }
+      };
+      
+      extractFromObject(json);
+    } catch (error) {
+      // Invalid JSON, skip
+    }
+    
+    return references;
+  }
+
+  // Extract generic file references
+  extractGenericReferences(content, baseDir) {
+    const references = [];
+    
+    // Look for file-like patterns
+    const patterns = [
+      /['"]((?:\.{1,2}\/)?[^'"]*\.[a-zA-Z0-9]{1,5})['"]/g,  // Quoted file paths
+      /src\s*=\s*['"']([^'"']+)['"']/g,                      // src attributes
+      /href\s*=\s*['"']([^'"']+)['"']/g,                     // href attributes
+      /url\s*\(\s*['"']?([^'"')]+)['"']?\s*\)/g              // CSS url()
+    ];
+    
+    patterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(content)) !== null) {
+        const filePath = match[1];
+        
+        if (this.isLocalFile(filePath)) {
+          const resolved = this.resolveFilePath(filePath, baseDir);
+          if (resolved) {
+            references.push(resolved);
+          }
+        }
+      }
+    });
+    
+    return references;
+  }
+
+  // Resolve import paths (handle extensions and index files)
+  resolveImportPath(importPath, baseDir) {
+    const possiblePaths = [
+      importPath,
+      importPath + '.js',
+      importPath + '.jsx', 
+      importPath + '.ts',
+      importPath + '.tsx',
+      importPath + '/index.js',
+      importPath + '/index.jsx',
+      importPath + '/index.ts', 
+      importPath + '/index.tsx'
+    ];
+    
+    for (const possiblePath of possiblePaths) {
+      const resolved = this.resolveFilePath(possiblePath, baseDir);
+      if (resolved) {
+        return resolved;
+      }
+    }
+    
+    return null;
   }
 }
 

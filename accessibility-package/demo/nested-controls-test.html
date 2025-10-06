@@ -16,13 +16,13 @@
     
     <!-- Test Case 2: Button containing links -->
     <button type="button" onclick="handleClick()" role="button">
-        <a href="/page1" role="link">Link inside button</a>
+        <a href="/page1" role="link" aria-label="Link inside button">Link inside button</a>
         <span>Click me</span>
     </button>
     
     <!-- Test Case 3: Link containing button -->
     <a href="/page2" role="link">
-        <button type="button">Button inside link</button>
+        <button type="button" aria-label="Button inside link">Button inside link</button>
     </a>
     
     <!-- Test Case 4: div[role="button"] containing input -->
@@ -50,7 +50,7 @@
     <div>
         <div class="container">
             <a href="/nested" role="link">
-                <button type="button">Deeply nested</button>
+                <button type="button" aria-label="Deeply nested">Deeply nested</button>
             </a>
         </div>
     </div>

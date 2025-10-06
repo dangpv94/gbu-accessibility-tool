@@ -13,6 +13,7 @@
 - 🏷️ **Aria Label Support** - Automatic aria-label matching alt text
 - 🌐 **HTML Lang Attributes** - Automatic language attribute fixes
 - 🎭 **Role Attributes** - WCAG-compliant role attribute management
+- 🏷️ **Aria Labels** - Automatic aria-label generation from alt text and content
 - 📋 **Form Labels** - Fix missing labels with intelligent aria-label generation
 - 🔘 **Button Names** - Fix empty buttons and input buttons without names
 - 🔗 **Link Names** - Fix empty links and detect generic link text
@@ -146,6 +147,7 @@ Fix Modes:
   --alt-only               Fix alt attributes + cleanup
   --lang-only              Fix HTML lang attributes + cleanup
   --role-only              Fix role attributes + cleanup
+  --aria-label-only        Fix aria-label attributes + cleanup
   --forms-only             Fix form labels + cleanup
   --buttons-only           Fix button names + cleanup
   --links-only             Fix link names + cleanup
@@ -168,6 +170,7 @@ Enhanced Alt Options:
 
 Help:
   -h, --help               Show help message
+  -v, --version            Show version number
 ```
 
 ### Examples
@@ -184,6 +187,7 @@ gbu-a11y -l en ./public
 
 # Individual fix types
 gbu-a11y --alt-only          # Fix alt attributes + cleanup
+gbu-a11y --aria-label-only   # Fix aria-label attributes + cleanup
 gbu-a11y --forms-only        # Fix form labels + cleanup
 gbu-a11y --buttons-only      # Fix button names + cleanup
 gbu-a11y --headings-only     # Analyze heading structure
@@ -345,7 +349,7 @@ await fixer.checkFileSizes('./src');
 
 ### Project Optimization
 - **Unused Files** → Detect files not referenced anywhere in the project
-  - Images, CSS, JavaScript, HTML files
+  - Images, CSS, SCSS/Sass, JavaScript, JSX, TypeScript, Vue, PHP, JSON, Markdown, XML, PDF, Video, Audio files
   - Local file references analysis
   - Heuristic detection with manual review recommendations
 - **Dead Code Analysis** → Find unused CSS rules and JavaScript functions

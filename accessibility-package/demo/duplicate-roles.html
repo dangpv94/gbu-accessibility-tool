@@ -15,8 +15,8 @@
     <a href="/about" role="link">About</a>
     
     <!-- Buttons with duplicate roles -->
-    <button onclick="submit()" role="button">Submit</button>
-    <button type="button" role="button">Click Me</button>
+    <button onclick="submit()" role="button" aria-label="Submit">Submit</button>
+    <button type="button" role="button" aria-label="Click Me">Click Me</button>
     
     <!-- Mixed quotes -->
     <div onclick="toggle()" role="button">Toggle</div>
@@ -39,7 +39,7 @@
         <h2>Article with Issues</h2>
         <img src="article1.jpg" alt="Article Image" role="img" aria-label="Article Image">
         <p>Some content...</p>
-        <a href="/read-more" role="link">Read More</a>
+        <a href="/read-more" role="link" aria-label="Read More">Read More</a>
     </article>
 </body>
 </html>

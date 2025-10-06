@@ -17,6 +17,7 @@ const options = {
   backupFiles: false, // Default to false for faster processing
   dryRun: false,
   help: false,
+  version: false,
   cleanupOnly: false,
   comprehensive: false, // Keep for backward compatibility
   altOnly: false,
@@ -52,6 +53,10 @@ for (let i = 0; i < args.length; i++) {
     case '-h':
       options.help = true;
       break;
+    case '--version':
+    case '-v':
+      options.version = true;
+      break;
     case '--directory':
     case '-d':
       options.directory = args[++i];
@@ -84,6 +89,9 @@ for (let i = 0; i < args.length; i++) {
       break;
     case '--role-only':
       options.roleOnly = true;
+      break;
+    case '--aria-label-only':
+      options.ariaLabelOnly = true;
       break;
     case '--forms-only':
       options.formsOnly = true;
@@ -152,6 +160,12 @@ for (let i = 0; i < args.length; i++) {
 }
 
 // Show help
+if (options.version) {
+  const packageJson = require('./package.json');
+  console.log(chalk.blue(`🔧 GBU Accessibility Package v${packageJson.version}`));
+  process.exit(0);
+}
+
 if (options.help) {
   console.log(chalk.blue(`
 🔧 Accessibility Fixer CLI
@@ -169,6 +183,7 @@ Options:
   --alt-only               Fix alt attributes + cleanup
   --lang-only              Fix HTML lang attributes + cleanup
   --role-only              Fix role attributes + cleanup
+  --aria-label-only        Fix aria-label attributes + cleanup
   --forms-only             Fix form labels + cleanup
   --buttons-only           Fix button names + cleanup
   --links-only             Fix link names + cleanup
@@ -185,6 +200,7 @@ Options:
   --include-emotions       Include emotional descriptors in alt text
   --strict-alt             Enable strict alt attribute quality checking
   -h, --help               Show this help message
+  -v, --version            Show version number
 
 Enhanced Alt Features:
   --enhanced-alt           Comprehensive alt attribute analysis with:
@@ -274,7 +290,7 @@ async function main() {
 
   try {
     // Handle different modes - All modes now include cleanup
-    if (options.cleanupOnly || options.altOnly || options.langOnly || options.roleOnly || 
+    if (options.cleanupOnly || options.altOnly || options.langOnly || options.roleOnly || options.ariaLabelOnly ||
         options.formsOnly || options.nestedOnly || options.buttonsOnly || options.linksOnly || options.landmarksOnly || 
         options.headingsOnly || options.dlOnly || options.linksCheckOnly || options.brokenLinksOnly || options.missingResourcesOnly || options.unusedFilesOnly || options.deadCodeOnly || options.fileSizeOnly) {
       // Individual modes - handle each separately, then run cleanup
@@ -361,6 +377,24 @@ async function main() {
       console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
       
       showCompletionMessage(options, 'Role attribute fixes + cleanup');
+      return;
+      
+    } else if (options.ariaLabelOnly) {
+      // Fix aria-label attributes + cleanup
+      console.log(chalk.blue('🏷️ Running aria-label attribute fixes + cleanup...'));
+      const ariaResults = await fixer.fixAriaLabels(options.directory);
+      const ariaFixed = ariaResults.filter(r => r.status === 'processed' && r.changes > 0).length;
+      const totalAriaIssues = ariaResults.reduce((sum, r) => sum + (r.changes || 0), 0);
+      
+      console.log(chalk.green(`\n✅ Fixed aria-label attributes in ${ariaFixed} files (${totalAriaIssues} issues)`));
+      
+      // Run cleanup
+      console.log(chalk.blue('\n🧹 Running cleanup for duplicate role attributes...'));
+      const cleanupResults = await fixer.cleanupDuplicateRoles(options.directory);
+      const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
+      console.log(chalk.green(`✅ Cleaned duplicate roles in ${cleanupFixed} files`));
+      
+      showCompletionMessage(options, 'Aria-label attribute fixes + cleanup');
       return;
       
     } else if (options.formsOnly) {
@@ -538,9 +572,14 @@ async function main() {
       // Check unused files only (no fixes, no cleanup)
       console.log(chalk.blue('🗂️ Running unused files check only...'));
       const unusedResults = await fixer.checkUnusedFiles(options.directory);
-      const totalUnusedFiles = unusedResults.length;
+      const totalUnusedFiles = unusedResults.unusedCount;
       
-      console.log(chalk.green(`\n✅ Checked project files (${totalUnusedFiles} unused files found)`));
+      if (totalUnusedFiles === 0) {
+        console.log(chalk.green(`\n✅ No unused files found! All ${unusedResults.totalFiles} files are properly referenced.`));
+      } else {
+        console.log(chalk.green(`\n✅ Analysis complete: Found ${totalUnusedFiles} unused files out of ${unusedResults.totalFiles} total files`));
+        console.log(chalk.gray(`📊 ${unusedResults.referencedFiles} files are referenced, ${totalUnusedFiles} potentially unused`));
+      }
       console.log(chalk.gray('💡 Unused file detection is heuristic - manual review recommended'));
       
       showCompletionMessage(options, 'Unused files check');

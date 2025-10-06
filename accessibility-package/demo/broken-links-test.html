@@ -12,16 +12,16 @@
     <h1>Broken Links Test</h1>
     
     <!-- Working local link -->
-    <a href="advanced-test.html" role="link">Working local link</a>
+    <a href="advanced-test.html" role="link" aria-label="Working local link">Working local link</a>
     
     <!-- Broken local link -->
-    <a href="non-existent-page.html" role="link">Broken local link</a>
+    <a href="non-existent-page.html" role="link" aria-label="Broken local link">Broken local link</a>
     
     <!-- Working external link -->
-    <a href="https://www.google.com" role="link">Working external link</a>
+    <a href="https://www.google.com" role="link" aria-label="Link to www.google.com">Working external link</a>
     
     <!-- Broken external link -->
-    <a href="https://this-domain-does-not-exist-12345.com" role="link">Broken external link</a>
+    <a href="https://this-domain-does-not-exist-12345.com" role="link" aria-label="Link to this-domain-does-not-exist-12345.com">Broken external link</a>
     
     <!-- Working image -->
     <img src="advanced-test.html" alt="Working image reference" role="img" aria-label="Working image reference">
@@ -33,9 +33,9 @@
     <script src="missing-script.js"></script>
     
     <!-- Skip patterns -->
-    <a href="#anchor" role="link">Anchor link (should skip)</a>
-    <a href="mailto:test@example.com" role="link">Email link (should skip)</a>
-    <a href="tel:+1234567890" role="link">Phone link (should skip)</a>
-    <a href="javascript:void(0)" role="link">JavaScript link (should skip)</a>
+    <a href="#anchor" role="link" aria-label="Anchor link (should skip)">Anchor link (should skip)</a>
+    <a href="mailto:test@example.com" role="link" aria-label="Email: test@example.com">Email link (should skip)</a>
+    <a href="tel:+1234567890" role="link" aria-label="Phone: +1234567890">Phone link (should skip)</a>
+    <a href="javascript:void(0)" role="link" aria-label="JavaScript link (should skip)">JavaScript link (should skip)</a>
 </body>
 </html>
