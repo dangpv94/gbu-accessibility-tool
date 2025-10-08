@@ -471,7 +471,7 @@ Chúng tôi hoan nghênh đóng góp! Vui lòng tạo Pull Request. Đối với
 ### Thiết lập phát triển
 
 ```bash
-git clone https://github.com/dangpv94/gbu-accessibility-tool.git
+git clone https://github.com/example/gbu-accessibility-tool.git
 cd gbu-accessibility-tool/accessibility-package
 npm install
 npm test
@@ -492,4 +492,4 @@ Dự án này được cấp phép theo Giấy phép MIT - xem file [LICENSE](LI
 
 **Được tạo với ❤️ bởi GBU Team**
 
-Để biết thêm thông tin, hãy truy cập [GitHub repository](https://github.com/dangpv94/gbu-accessibility-tool) của chúng tôi.
+Để biết thêm thông tin, hãy truy cập [GitHub repository](https://github.com/example/gbu-accessibility-tool) của chúng tôi.

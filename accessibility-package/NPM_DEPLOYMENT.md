@@ -107,7 +107,7 @@ git tag v3.0.0
 git push origin v3.0.0
 
 # Update GitHub release notes
-# Go to: https://github.com/dangpv94/gbu-accessibility-tool/releases
+# Go to: https://github.com/example/gbu-accessibility-tool/releases
 # Create new release with tag v3.0.0
 ```
 

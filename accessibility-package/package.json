@@ -76,14 +76,6 @@
   ],
   "author": "GBU Team",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/dangpv94/gbu-accessibility-tool.git"
-  },
-  "homepage": "https://github.com/dangpv94/gbu-accessibility-tool#readme",
-  "bugs": {
-    "url": "https://github.com/dangpv94/gbu-accessibility-tool/issues"
-  },
   "files": [
     "lib/",
     "bin/",

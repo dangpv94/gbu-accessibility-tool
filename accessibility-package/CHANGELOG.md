@@ -265,4 +265,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-For more details about any release, see the [GitHub Releases](https://github.com/dangpv94/gbu-accessibility-tool/releases) page.
+For more details about any release, see the [GitHub Releases](https://github.com/example/gbu-accessibility-tool/releases) page.

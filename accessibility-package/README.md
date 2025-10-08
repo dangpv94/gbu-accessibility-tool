@@ -452,7 +452,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 ### Development Setup
 
 ```bash
-git clone https://github.com/dangpv94/gbu-accessibility-tool.git
+git clone https://github.com/example/gbu-accessibility-tool.git
 cd gbu-accessibility-tool/accessibility-package
 npm install
 npm test
@@ -473,4 +473,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Made with ❤️ by the GBU Team**
 
-For more information, visit our [GitHub repository](https://github.com/dangpv94/gbu-accessibility-tool).
+For more information, visit our [GitHub repository](https://github.com/example/gbu-accessibility-tool).
