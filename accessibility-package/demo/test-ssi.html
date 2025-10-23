@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SSI Include Test</title>
+    <link rel="stylesheet" href="sample.css">
+</head>
+<body>
+    <!-- Server Side Includes with virtual path -->
+    <!--#include virtual="/assets/common/inc/header.html"-->
+    
+    <main>
+        <h1>Main Content</h1>
+        
+        <!-- SSI with file path -->
+        <!--#include file="assets/common/inc/sidebar.html"-->
+        
+        <p>This page uses Server Side Includes (SSI).</p>
+    </main>
+    
+    <!-- Another SSI include -->
+    <!--#include virtual="/assets/common/inc/footer.html"-->
+    
+    <script src="demo.js"></script>
+</body>
+</html>

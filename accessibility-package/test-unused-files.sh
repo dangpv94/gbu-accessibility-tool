@@ -5,9 +5,9 @@ echo "🗂️ Testing unused files detection..."
 
 # Danh sách các dự án cần test
 TEST_PROJECTS=(
-    "/Users/phamdang/Works/fe-base"
+    "/Users/phamdang/Works/zukkyun/01-git/zukkyun-2025-html"
+    # "/Users/phamdang/Works/fe-base"
     # "/path/to/project2"
-    # "/path/to/project3"
 )
 
 # Backup current directory

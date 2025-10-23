@@ -1,0 +1,55 @@
+{
+  "name": "demo-config",
+  "version": "1.0.0",
+  "assets": {
+    "images": [
+      "assets/logo.png",
+      "/assets/banner.jpg",
+      "./assets/icon.svg"
+    ],
+    "styles": [
+      "assets/main.css",
+      "assets/theme.css"
+    ],
+    "scripts": [
+      "assets/app.js",
+      "assets/vendor.js"
+    ]
+  },
+  "pages": {
+    "home": "index.html",
+    "about": "about.html",
+    "contact": "contact.html"
+  },
+  "theme": {
+    "logo": "assets/common/img/icon.png",
+    "background": "assets/images/bg.jpg",
+    "favicon": "assets/common/img/favicon.ico"
+  },
+  "manifest": {
+    "icons": [
+      {
+        "src": "assets/icon-192.png",
+        "sizes": "192x192"
+      },
+      {
+        "src": "assets/icon-512.png",
+        "sizes": "512x512"
+      }
+    ]
+  },
+  "resources": {
+    "css": [
+      "assets/css/top.css",
+      "demo/large-file-demo.css"
+    ],
+    "js": [
+      "assets/js/top.js",
+      "demo/demo.js"
+    ],
+    "html": [
+      "demo/comprehensive-test.html",
+      "demo/sample.html"
+    ]
+  }
+}

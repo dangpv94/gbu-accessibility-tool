@@ -5841,7 +5841,7 @@ class AccessibilityFixer {
     return referencedFiles;
   }
 
-  // Find HTML and CSS/SCSS files to scan for references
+  // Find HTML, CSS/SCSS, JS, and other source files to scan for references
   async findSourceFiles(directory) {
     const sourceFiles = [];
     
@@ -5858,9 +5858,11 @@ class AccessibilityFixer {
               await walk(filePath);
             }
           } else {
-            // Include HTML (main entry) and CSS/SCSS (for background images)
+            // Include HTML, CSS/SCSS, JavaScript, TypeScript, Vue, PHP, JSON, XML, SVG
             const ext = path.extname(file).toLowerCase();
-            if (['.html', '.htm', '.css', '.scss', '.sass'].includes(ext)) {
+            if (['.html', '.htm', '.css', '.scss', '.sass', 
+                 '.js', '.jsx', '.ts', '.tsx', '.mjs',
+                 '.vue', '.php', '.json', '.xml', '.svg'].includes(ext)) {
               sourceFiles.push(filePath);
             }
           }
@@ -5874,7 +5876,7 @@ class AccessibilityFixer {
     return sourceFiles;
   }
 
-  // Enhanced reference extraction from HTML and CSS files
+  // Enhanced reference extraction from HTML, CSS, JS, and other source files
   extractAllReferences(content, baseDir, sourceFile) {
     const references = [];
     const ext = path.extname(sourceFile).toLowerCase();
@@ -5888,6 +5890,31 @@ class AccessibilityFixer {
       // Extract from CSS/SCSS files - background images
       const cssRefs = this.extractCssReferences(content, baseDir);
       references.push(...cssRefs);
+      
+    } else if (['.js', '.jsx', '.ts', '.tsx', '.mjs'].includes(ext)) {
+      // Extract from JavaScript/TypeScript files - imports, requires, dynamic imports
+      const jsRefs = this.extractJsReferences(content, baseDir);
+      references.push(...jsRefs);
+      
+    } else if (ext === '.vue') {
+      // Extract from Vue files - template, script, and style sections
+      const vueRefs = this.extractVueReferences(content, baseDir);
+      references.push(...vueRefs);
+      
+    } else if (ext === '.json') {
+      // Extract from JSON files - config files, manifests
+      const jsonRefs = this.extractJsonReferences(content, baseDir);
+      references.push(...jsonRefs);
+      
+    } else if (['.xml', '.svg'].includes(ext)) {
+      // Extract from XML/SVG files - embedded references
+      const xmlRefs = this.extractXmlReferences(content, baseDir);
+      references.push(...xmlRefs);
+      
+    } else if (ext === '.php') {
+      // Extract from PHP files - mixed HTML/PHP content
+      const phpRefs = this.extractPhpReferences(content, baseDir);
+      references.push(...phpRefs);
     }
     
     return references;
@@ -5922,7 +5949,10 @@ class AccessibilityFixer {
       // Iframe
       /<iframe[^>]*src\s*=\s*["']([^"']+)["']/gi,
       // Meta (for icons)
-      /<meta[^>]*content\s*=\s*["']([^"']+\.(ico|png|jpg|jpeg|svg))["']/gi
+      /<meta[^>]*content\s*=\s*["']([^"']+\.(ico|png|jpg|jpeg|svg))["']/gi,
+      // Server Side Includes (SSI)
+      /<!--#include\s+virtual\s*=\s*["']([^"']+)["']\s*-->/gi,
+      /<!--#include\s+file\s*=\s*["']([^"']+)["']\s*-->/gi
     ];
     
     for (const pattern of patterns) {
@@ -5990,16 +6020,22 @@ class AccessibilityFixer {
   extractJsReferences(content, baseDir) {
     const references = [];
     
-    // JavaScript patterns for file references
+    // JavaScript/TypeScript patterns for file references
     const patterns = [
-      // require() calls
-      /require\s*\(\s*["']([^"']+)["']\s*\)/gi,
-      // import statements
+      // ES6 import statements
       /import\s+.*?from\s+["']([^"']+)["']/gi,
-      // fetch() calls with local files
-      /fetch\s*\(\s*["']([^"']*\.(html|css|js|json|xml))["']\s*\)/gi,
+      // Dynamic imports
+      /import\s*\(\s*["']([^"']+)["']\s*\)/gi,
+      // CommonJS require
+      /require\s*\(\s*["']([^"']+)["']\s*\)/gi,
+      // fetch() API calls
+      /fetch\s*\(\s*["']([^"']+)["']\s*\)/gi,
       // XMLHttpRequest
-      /\.open\s*\(\s*["'][^"']*["']\s*,\s*["']([^"']*\.(html|css|js|json|xml))["']/gi
+      /\.open\s*\(\s*["'][^"']*["']\s*,\s*["']([^"']+)["']/gi,
+      // String literals that look like paths
+      /["']([^"']*\.(html|css|js|json|xml|jpg|jpeg|png|gif|svg|webp|ico))["']/gi,
+      // Template literals with paths
+      /`([^`]*\.(html|css|js|json|xml|jpg|jpeg|png|gif|svg|webp|ico))`/gi
     ];
     
     for (const pattern of patterns) {
@@ -6007,14 +6043,139 @@ class AccessibilityFixer {
       while ((match = pattern.exec(content)) !== null) {
         const url = match[1];
         if (this.isLocalFile(url)) {
-          // Store both original URL and normalized versions for matching
-          references.push(url);
-          if (url.startsWith('/')) {
-            references.push(url.substring(1)); // Remove leading slash
+          this.addNormalizedUrl(references, url);
+        }
+      }
+    }
+    
+    return references;
+  }
+
+  extractVueReferences(content, baseDir) {
+    const references = [];
+    
+    // Extract from template section (HTML-like)
+    const templateMatch = content.match(/<template[^>]*>([\s\S]*?)<\/template>/i);
+    if (templateMatch) {
+      const htmlRefs = this.extractHtmlReferences(templateMatch[1], baseDir);
+      references.push(...htmlRefs);
+    }
+    
+    // Extract from script section (JS-like)
+    const scriptMatch = content.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+    if (scriptMatch) {
+      const jsRefs = this.extractJsReferences(scriptMatch[1], baseDir);
+      references.push(...jsRefs);
+    }
+    
+    // Extract from style section (CSS-like)
+    const styleMatch = content.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+    if (styleMatch) {
+      const cssRefs = this.extractCssReferences(styleMatch[1], baseDir);
+      references.push(...cssRefs);
+    }
+    
+    return references;
+  }
+
+  extractJsonReferences(content, baseDir) {
+    const references = [];
+    
+    try {
+      // Parse JSON and look for string values that might be file paths
+      const data = JSON.parse(content);
+      
+      const findPaths = (obj) => {
+        if (typeof obj === 'string') {
+          // Check if string looks like a file path
+          if (/\.(html|css|js|json|xml|jpg|jpeg|png|gif|svg|webp|ico)$/i.test(obj)) {
+            if (this.isLocalFile(obj)) {
+              this.addNormalizedUrl(references, obj);
+            }
           }
-          if (!url.startsWith('./') && !url.startsWith('/')) {
-            references.push('./' + url); // Add leading ./
+        } else if (Array.isArray(obj)) {
+          obj.forEach(item => findPaths(item));
+        } else if (obj && typeof obj === 'object') {
+          Object.values(obj).forEach(value => findPaths(value));
+        }
+      };
+      
+      findPaths(data);
+    } catch (error) {
+      // If JSON parsing fails, try regex patterns
+      const patterns = [
+        /["']([^"']*\.(html|css|js|json|xml|jpg|jpeg|png|gif|svg|webp|ico))["']/gi
+      ];
+      
+      for (const pattern of patterns) {
+        let match;
+        while ((match = pattern.exec(content)) !== null) {
+          const url = match[1];
+          if (this.isLocalFile(url)) {
+            this.addNormalizedUrl(references, url);
           }
+        }
+      }
+    }
+    
+    return references;
+  }
+
+  extractXmlReferences(content, baseDir) {
+    const references = [];
+    
+    // XML/SVG patterns for file references
+    const patterns = [
+      // href attributes
+      /href\s*=\s*["']([^"']+)["']/gi,
+      // src attributes
+      /src\s*=\s*["']([^"']+)["']/gi,
+      // xlink:href (SVG)
+      /xlink:href\s*=\s*["']([^"']+)["']/gi,
+      // file attributes
+      /file\s*=\s*["']([^"']+)["']/gi,
+      // path attributes with file extensions
+      /path\s*=\s*["']([^"']*\.(html|css|js|jpg|jpeg|png|gif|svg))["']/gi
+    ];
+    
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(content)) !== null) {
+        const url = match[1];
+        if (this.isLocalFile(url)) {
+          this.addNormalizedUrl(references, url);
+        }
+      }
+    }
+    
+    return references;
+  }
+
+  extractPhpReferences(content, baseDir) {
+    const references = [];
+    
+    // PHP can contain HTML, so extract HTML references first
+    const htmlRefs = this.extractHtmlReferences(content, baseDir);
+    references.push(...htmlRefs);
+    
+    // PHP-specific patterns
+    const patterns = [
+      // include/require statements
+      /(?:include|require|include_once|require_once)\s*\(\s*["']([^"']+)["']\s*\)/gi,
+      // file_get_contents
+      /file_get_contents\s*\(\s*["']([^"']+)["']\s*\)/gi,
+      // readfile
+      /readfile\s*\(\s*["']([^"']+)["']\s*\)/gi,
+      // fopen
+      /fopen\s*\(\s*["']([^"']+)["']\s*,/gi
+    ];
+    
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(content)) !== null) {
+        const url = match[1];
+        if (this.isLocalFile(url)) {
+          this.addNormalizedUrl(references, url);
         }
       }
     }
