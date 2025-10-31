@@ -1260,7 +1260,7 @@ class AccessibilityFixer {
   }
 
   async fixHtmlLang(directory = '.') {
-    console.log(chalk.blue('📝 Fixing HTML lang attributes...'));
+    console.log(chalk.blue('📝 Đang sửa thuộc tính HTML lang...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -1294,7 +1294,7 @@ class AccessibilityFixer {
   }
 
   async fixEmptyAltAttributes(directory = '.') {
-    console.log(chalk.blue('🖼️ Fixing empty alt attributes...'));
+    console.log(chalk.blue('🖼️ Đang sửa thuộc tính alt rỗng...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -1369,7 +1369,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} alt attribute issues across ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Tìm thấy ${totalIssuesFound} vấn đề thuộc tính alt trong ${results.length} file`));
     if (this.config.enhancedAltMode) {
       console.log(chalk.gray(`   🔍 Enhanced analysis mode: Comprehensive quality checking enabled`));
     }
@@ -1406,7 +1406,7 @@ class AccessibilityFixer {
   }
 
   async fixRoleAttributes(directory = '.') {
-    console.log(chalk.blue('🎭 Fixing role attributes...'));
+    console.log(chalk.blue('🎭 Đang sửa thuộc tính role...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -1447,7 +1447,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} role attribute issues across ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Tìm thấy ${totalIssuesFound} vấn đề thuộc tính role trong ${results.length} file`));
     return results;
   }
 
@@ -1483,7 +1483,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} aria-label issues across ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Tìm thấy ${totalIssuesFound} vấn đề aria-label trong ${results.length} file`));
     return results;
   }
 
@@ -2275,7 +2275,7 @@ class AccessibilityFixer {
   }
 
   async cleanupDuplicateRoles(directory = '.') {
-    console.log(chalk.blue('🧹 Cleaning up duplicate role attributes...'));
+    console.log(chalk.blue('🧹 Đang dọn dẹp các thuộc tính role trùng lặp...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -2307,7 +2307,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Cleaned duplicate roles in ${totalFixedFiles} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Đã dọn dẹp role trùng lặp trong ${totalFixedFiles} file`));
     return results;
   }
 
@@ -2341,7 +2341,7 @@ class AccessibilityFixer {
   }
 
   async fixAllAccessibilityIssues(directory = '.') {
-    console.log(chalk.blue('🚀 Starting comprehensive accessibility fixes...'));
+    console.log(chalk.blue('🚀 Đang bắt đầu sửa lỗi accessibility toàn diện...'));
     
     const results = {
       lang: [],
@@ -2358,46 +2358,46 @@ class AccessibilityFixer {
     
     try {
       // Step 1: Fix lang attributes
-      console.log(chalk.yellow('\n📝 Step 1: HTML lang attributes...'));
+      console.log(chalk.yellow('\n📝 Bước 1: Thuộc tính HTML lang...'));
       results.lang = await this.fixHtmlLang(directory);
       
       // Step 2: Fix alt attributes
-      console.log(chalk.yellow('\n🖼️ Step 2: Alt attributes...'));
+      console.log(chalk.yellow('\n🖼️ Bước 2: Thuộc tính alt...'));
       results.alt = await this.fixEmptyAltAttributes(directory);
       
       // Step 3: Fix role attributes
-      console.log(chalk.yellow('\n🎭 Step 3: Role attributes...'));
+      console.log(chalk.yellow('\n🎭 Bước 3: Thuộc tính role...'));
       results.roles = await this.fixRoleAttributes(directory);
       
       // Step 4: Fix form labels
-      console.log(chalk.yellow('\n📋 Step 4: Form labels...'));
+      console.log(chalk.yellow('\n📋 Bước 4: Nhãn form...'));
       results.forms = await this.fixFormLabels(directory);
       
       // Step 5: Fix button names
-      console.log(chalk.yellow('\n🔘 Step 5: Button names...'));
+      console.log(chalk.yellow('\n🔘 Bước 5: Tên button...'));
       results.buttons = await this.fixButtonNames(directory);
       
       // Step 6: Fix link names
-      console.log(chalk.yellow('\n🔗 Step 6: Link names...'));
+      console.log(chalk.yellow('\n🔗 Bước 6: Tên link...'));
       results.links = await this.fixLinkNames(directory);
       
       // Step 7: Fix landmarks
-      console.log(chalk.yellow('\n🏛️ Step 7: Landmarks...'));
+      console.log(chalk.yellow('\n🏛️ Bước 7: Landmark...'));
       results.landmarks = await this.fixLandmarks(directory);
       
       // Step 8: Analyze headings (no auto-fix)
-      console.log(chalk.yellow('\n📑 Step 8: Heading analysis...'));
+      console.log(chalk.yellow('\n📑 Bước 8: Phân tích heading...'));
       results.headings = await this.analyzeHeadings(directory);
       
       // Step 9: Check broken links and missing resources (no auto-fix)
-      console.log(chalk.yellow('\n🔗 Step 9: External links check...'));
+      console.log(chalk.yellow('\n🔗 Bước 9: Kiểm tra link bên ngoài...'));
       results.brokenLinks = await this.checkBrokenLinks(directory);
       
-      console.log(chalk.yellow('\n📁 Step 9b: Missing resources check...'));
+      console.log(chalk.yellow('\n📁 Bước 9b: Kiểm tra tài nguyên thiếu...'));
       results.missingResources = await this.check404Resources(directory);
       
       // Step 10: Cleanup duplicate roles
-      console.log(chalk.yellow('\n🧹 Step 10: Cleanup duplicate roles...'));
+      console.log(chalk.yellow('\n🧹 Bước 10: Dọn dẹp role trùng lặp...'));
       results.cleanup = await this.cleanupDuplicateRoles(directory);
       
       // Summary
@@ -2433,27 +2433,27 @@ class AccessibilityFixer {
         results.landmarks.reduce((sum, r) => sum + (r.issues || 0), 0) +
         results.cleanup.filter(r => r.status === 'fixed').length;
       
-      console.log(chalk.green('\n🎉 All accessibility fixes completed!'));
-      console.log(chalk.blue('📊 Final Summary:'));
-      console.log(chalk.white(`   Total files scanned: ${totalFiles}`));
-      console.log(chalk.green(`   Files fixed: ${totalFixed}`));
-      console.log(chalk.yellow(`   Total issues resolved: ${totalIssues}`));
+      console.log(chalk.green('\n🎉 Hoàn tất tất cả các sửa lỗi accessibility!'));
+      console.log(chalk.blue('📊 Tóm tắt cuối cùng:'));
+      console.log(chalk.white(`   Tổng file đã quét: ${totalFiles}`));
+      console.log(chalk.green(`   File đã sửa: ${totalFixed}`));
+      console.log(chalk.yellow(`   Tổng vấn đề đã giải quyết: ${totalIssues}`));
       
       if (this.config.dryRun) {
-        console.log(chalk.cyan('\n💡 This was a dry run. Use without --dry-run to apply changes.'));
+        console.log(chalk.cyan('\n💡 Đây là chế độ xem trước. Sử dụng không có --dry-run để áp dụng thay đổi.'));
       }
       
       return results;
       
     } catch (error) {
-      console.error(chalk.red('❌ Error during comprehensive fix:'), error.message);
+      console.error(chalk.red('❌ Lỗi trong quá trình sửa toàn diện:'), error.message);
       throw error;
     }
   }
 
   // Fix form labels
   async fixFormLabels(directory = '.') {
-    console.log(chalk.blue('📋 Fixing form labels...'));
+    console.log(chalk.blue('📋 Đang sửa nhãn form...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -2494,7 +2494,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} form label issues across ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Tìm thấy ${totalIssuesFound} vấn đề nhãn form trong ${results.length} file`));
     return results;
   }
 
@@ -2608,7 +2608,7 @@ class AccessibilityFixer {
 
   // Fix button names
   async fixButtonNames(directory = '.') {
-    console.log(chalk.blue('🔘 Fixing button names...'));
+    console.log(chalk.blue('🔘 Đang sửa tên button...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -2649,7 +2649,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} button name issues across ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Tìm thấy ${totalIssuesFound} vấn đề tên button trong ${results.length} file`));
     return results;
   }
 
@@ -2735,7 +2735,7 @@ class AccessibilityFixer {
 
   // Fix link names
   async fixLinkNames(directory = '.') {
-    console.log(chalk.blue('🔗 Fixing link names...'));
+    console.log(chalk.blue('🔗 Đang sửa tên link...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -2776,7 +2776,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} link name issues across ${results.length} files`));
+    console.log(chalk.blue(`\n�� Tóm tắt: Tìm thấy ${totalIssuesFound} vấn đề tên link trong ${results.length} file`));
     return results;
   }
 
@@ -2856,7 +2856,7 @@ class AccessibilityFixer {
 
   // Fix landmarks
   async fixLandmarks(directory = '.') {
-    console.log(chalk.blue('🏛️ Fixing landmarks...'));
+    console.log(chalk.blue('🏛️ Đang sửa landmark...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -2897,7 +2897,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} landmark issues across ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Tìm thấy ${totalIssuesFound} vấn đề landmark trong ${results.length} file`));
     return results;
   }
 
@@ -2986,7 +2986,7 @@ class AccessibilityFixer {
 
   // Check for broken external links only
   async checkBrokenLinks(directory = '.') {
-    console.log(chalk.blue('🔗 Checking for broken external links...'));
+    console.log(chalk.blue('🔗 Đang kiểm tra link bên ngoài bị lỗi...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -3013,7 +3013,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Analyzed external links in ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Đã phân tích link bên ngoài trong ${results.length} file`));
     console.log(chalk.gray('💡 Broken link issues require manual review and cannot be auto-fixed'));
     return results;
   }
@@ -3047,9 +3047,189 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Analyzed local resources in ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Đã phân tích tài nguyên cục bộ trong ${results.length} file`));
     console.log(chalk.gray('💡 Missing resource issues require manual review and cannot be auto-fixed'));
     return results;
+  }
+
+  // Check Google Tag Manager installation
+  async checkGoogleTagManager(directory = '.') {
+    console.log(chalk.blue('🏷️ Đang kiểm tra cài đặt Google Tag Manager (GTM)...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const gtmAnalysis = this.analyzeGTMInstallation(content, file);
+        
+        if (gtmAnalysis.hasGTM || gtmAnalysis.issues.length > 0) {
+          console.log(chalk.cyan(`\n📁 ${file}:`));
+          
+          if (gtmAnalysis.hasGTM) {
+            console.log(chalk.green(`  ✅ GTM Container ID: ${gtmAnalysis.containerId}`));
+            
+            if (gtmAnalysis.headScriptCorrect) {
+              console.log(chalk.green(`  ✅ Script trong head: Đã đặt đúng vị trí trước </head>`));
+            } else if (gtmAnalysis.hasHeadScript) {
+              console.log(chalk.yellow(`  ⚠️ Script trong head: Tìm thấy nhưng có thể chưa đặt ở vị trí tối ưu`));
+            } else {
+              console.log(chalk.red(`  ❌ Script trong head: Thiếu trong phần <head>`));
+            }
+            
+            if (gtmAnalysis.bodyNoscriptCorrect) {
+              console.log(chalk.green(`  ✅ Noscript trong body: Đã đặt đúng vị trí sau <body>`));
+            } else if (gtmAnalysis.hasBodyNoscript) {
+              console.log(chalk.yellow(`  ⚠️ Noscript trong body: Tìm thấy nhưng có thể chưa đặt ở vị trí tối ưu`));
+            } else {
+              console.log(chalk.red(`  ❌ Noscript trong body: Thiếu sau thẻ <body>`));
+            }
+          }
+          
+          gtmAnalysis.issues.forEach(issue => {
+            console.log(chalk.yellow(`  ${issue.type}: ${issue.description}`));
+            if (issue.suggestion) {
+              console.log(chalk.gray(`    💡 ${issue.suggestion}`));
+            }
+          });
+        }
+        
+        results.push({ 
+          file, 
+          status: 'analyzed', 
+          gtmAnalysis 
+        });
+      } catch (error) {
+        console.error(chalk.red(`❌ Lỗi khi xử lý ${file}: ${error.message}`));
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    const filesWithGTM = results.filter(r => r.gtmAnalysis?.hasGTM).length;
+    const filesWithIssues = results.filter(r => r.gtmAnalysis?.issues?.length > 0).length;
+    
+    console.log(chalk.blue(`\n📊 Tóm tắt: Đã phân tích ${results.length} file`));
+    console.log(chalk.green(`  ✅ File có GTM: ${filesWithGTM}`));
+    if (filesWithIssues > 0) {
+      console.log(chalk.yellow(`  ⚠️ File có vấn đề về GTM: ${filesWithIssues}`));
+    }
+    console.log(chalk.gray('💡 GTM cần có cả <script> trong <head> và <noscript> sau <body>'));
+    
+    return results;
+  }
+
+  analyzeGTMInstallation(content, filePath) {
+    const result = {
+      hasGTM: false,
+      containerId: null,
+      hasHeadScript: false,
+      hasBodyNoscript: false,
+      headScriptCorrect: false,
+      bodyNoscriptCorrect: false,
+      issues: []
+    };
+    
+    // Pattern to detect GTM container ID - more flexible to handle line breaks and spaces
+    const gtmScriptPattern = /googletagmanager\.com\/gtm\.js[^'"]*['"]?\s*\+?\s*i\s*\+?\s*dl[^)]*\)\s*[,;]\s*['"]([^'"]*)['"]\s*,\s*['"]script['"]\s*,\s*['"]dataLayer['"]\s*,\s*['"]?(GTM-[A-Z0-9]+)['"]?\)/i;
+    const gtmContainerPattern = /GTM-[A-Z0-9]+/g; // Simpler pattern to find any GTM container ID
+    const gtmNoscriptPattern = /googletagmanager\.com\/ns\.html\?id=(GTM-[A-Z0-9]+)/i;
+    
+    // Check for GTM script in head - look for container ID in the script section
+    const scriptMatch = content.match(gtmScriptPattern);
+    let containerId = null;
+    
+    // Extract head content
+    const headContent = content.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+    
+    if (headContent) {
+      // Look for GTM container ID in head
+      const headContainerMatches = headContent[1].match(gtmContainerPattern);
+      if (headContainerMatches) {
+        // Filter to only GTM container IDs (not other codes)
+        const gtmIds = headContainerMatches.filter(id => id.startsWith('GTM-'));
+        if (gtmIds.length > 0) {
+          containerId = gtmIds[0]; // Use first found GTM ID
+          result.hasGTM = true;
+          result.containerId = containerId;
+          result.hasHeadScript = true;
+          
+          // Check if googletagmanager.com is mentioned in head (confirms it's GTM script)
+          if (headContent[1].includes('googletagmanager.com')) {
+            result.headScriptCorrect = true;
+          }
+        }
+      }
+    }
+    
+    if (!result.hasHeadScript && scriptMatch) {
+      // Fallback: script pattern matched but not in head
+      result.hasGTM = true;
+      result.containerId = scriptMatch[2] || scriptMatch[1];
+      result.hasHeadScript = true;
+      result.issues.push({
+        type: '⚠️ Vị trí GTM Script',
+        description: 'Tìm thấy GTM script nhưng không nằm trong phần <head>',
+        suggestion: 'Di chuyển GTM script vào phần <head>, tốt nhất là đặt trước thẻ đóng </head>'
+      });
+    }
+    
+    // Check for GTM noscript in body
+    const noscriptMatch = content.match(gtmNoscriptPattern);
+    if (noscriptMatch) {
+      if (!result.hasGTM) {
+        result.hasGTM = true;
+        result.containerId = noscriptMatch[1];
+      }
+      result.hasBodyNoscript = true;
+      
+      // Check if noscript is right after <body> tag
+      const bodyStartPattern = /<body[^>]*>([\s\S]{0,500})/i;
+      const bodyStartMatch = content.match(bodyStartPattern);
+      if (bodyStartMatch && bodyStartMatch[1].includes(noscriptMatch[0])) {
+        // Check if it's within first 200 chars after <body> (good practice)
+        const bodyStartPart = bodyStartMatch[1].slice(0, 200);
+        if (bodyStartPart.includes(noscriptMatch[0])) {
+          result.bodyNoscriptCorrect = true;
+        }
+      } else {
+        result.issues.push({
+          type: '⚠️ Vị trí GTM Noscript',
+          description: 'Tìm thấy GTM noscript nhưng không nằm ngay sau thẻ <body>',
+          suggestion: 'Di chuyển GTM noscript về ngay sau thẻ mở <body>'
+        });
+      }
+    }
+    
+    // Check for mismatched container IDs
+    if (containerId && noscriptMatch && containerId !== noscriptMatch[1]) {
+      result.issues.push({
+        type: '❌ Container ID không khớp',
+        description: `Script sử dụng ${containerId} nhưng noscript sử dụng ${noscriptMatch[1]}`,
+        suggestion: 'Đảm bảo cả hai đoạn mã GTM sử dụng cùng một container ID'
+      });
+    }
+    
+    // Check for incomplete installation
+    if (result.hasGTM) {
+      if (!result.hasHeadScript) {
+        result.issues.push({
+          type: '❌ Thiếu GTM Script',
+          description: 'Tìm thấy GTM noscript nhưng thiếu script chính trong <head>',
+          suggestion: 'Thêm đoạn mã GTM script vào phần <head> trước thẻ </head>'
+        });
+      }
+      
+      if (!result.hasBodyNoscript) {
+        result.issues.push({
+          type: '❌ Thiếu GTM Noscript',
+          description: 'Tìm thấy GTM script nhưng thiếu noscript dự phòng trong <body>',
+          suggestion: 'Thêm đoạn mã GTM noscript ngay sau thẻ mở <body>'
+        });
+      }
+    }
+    
+    return result;
   }
 
   async analyzeBrokenLinks(content, filePath, mode = 'all') {
@@ -3279,7 +3459,7 @@ class AccessibilityFixer {
 
   // Analyze headings (no auto-fix, only suggestions)
   async analyzeHeadings(directory = '.') {
-    console.log(chalk.blue('📑 Analyzing heading structure...'));
+    console.log(chalk.blue('📑 Đang phân tích cấu trúc heading...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -3306,7 +3486,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Analyzed heading structure in ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Đã phân tích cấu trúc heading trong ${results.length} file`));
     console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
     return results;
   }
@@ -3353,7 +3533,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} form label issues across ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Tìm thấy ${totalIssuesFound} vấn đề nhãn form trong ${results.length} file`));
     return results;
   }
 
@@ -3760,55 +3940,55 @@ class AccessibilityFixer {
     
     try {
       // Step 1: HTML lang attributes
-      console.log(chalk.blue('📝 Step 1: HTML lang attributes...'));
+      console.log(chalk.blue('📝 Bước 1: Thuộc tính HTML lang...'));
       const langResults = await this.fixHtmlLang(directory);
       const langFixed = langResults.filter(r => r.status === 'fixed').length;
       results.steps.push({ step: 1, name: 'HTML lang attributes', fixed: langFixed });
       
       // Step 2: Alt attributes
-      console.log(chalk.blue('🖼️ Step 2: Alt attributes...'));
+      console.log(chalk.blue('🖼️ Bước 2: Thuộc tính alt...'));
       const altResults = await this.fixEmptyAltAttributes(directory);
       const altFixed = altResults.filter(r => r.status === 'fixed').length;
       const totalAltIssues = altResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 2, name: 'Alt attributes', fixed: altFixed, issues: totalAltIssues });
       
       // Step 3: Role attributes
-      console.log(chalk.blue('🎭 Step 3: Role attributes...'));
+      console.log(chalk.blue('🎭 Bước 3: Thuộc tính role...'));
       const roleResults = await this.fixRoleAttributes(directory);
       const roleFixed = roleResults.filter(r => r.status === 'fixed').length;
       const totalRoleIssues = roleResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 3, name: 'Role attributes', fixed: roleFixed, issues: totalRoleIssues });
       
       // Step 4: Form labels
-      console.log(chalk.blue('📋 Step 4: Form labels...'));
+      console.log(chalk.blue('📋 Bước 4: Nhãn form...'));
       const formResults = await this.fixFormLabels(directory);
       const formFixed = formResults.filter(r => r.status === 'fixed').length;
       const totalFormIssues = formResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 4, name: 'Form labels', fixed: formFixed, issues: totalFormIssues });
       
       // Step 5: Button names
-      console.log(chalk.blue('🔘 Step 5: Button names...'));
+      console.log(chalk.blue('🔘 Bước 5: Tên button...'));
       const buttonResults = await this.fixButtonNames(directory);
       const buttonFixed = buttonResults.filter(r => r.status === 'fixed').length;
       const totalButtonIssues = buttonResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 5, name: 'Button names', fixed: buttonFixed, issues: totalButtonIssues });
       
       // Step 6: Link names
-      console.log(chalk.blue('🔗 Step 6: Link names...'));
+      console.log(chalk.blue('🔗 Bước 6: Tên link...'));
       const linkResults = await this.fixLinkNames(directory);
       const linkFixed = linkResults.filter(r => r.status === 'fixed').length;
       const totalLinkIssues = linkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 6, name: 'Link names', fixed: linkFixed, issues: totalLinkIssues });
       
       // Step 7: Landmarks
-      console.log(chalk.blue('🏛️ Step 7: Landmarks...'));
+      console.log(chalk.blue('🏛️ Bước 7: Landmark...'));
       const landmarkResults = await this.fixLandmarks(directory);
       const landmarkFixed = landmarkResults.filter(r => r.status === 'fixed').length;
       const totalLandmarkIssues = landmarkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 7, name: 'Landmarks', fixed: landmarkFixed, issues: totalLandmarkIssues });
       
       // Step 8: Heading analysis
-      console.log(chalk.blue('📑 Step 8: Heading analysis...'));
+      console.log(chalk.blue('📑 Bước 8: Phân tích heading...'));
       const headingResults = await this.analyzeHeadings(directory);
       const totalHeadingSuggestions = headingResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 8, name: 'Heading analysis', suggestions: totalHeadingSuggestions });
@@ -3820,7 +4000,7 @@ class AccessibilityFixer {
       const totalBrokenLinks = brokenLinksResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: '9a', name: 'External links check', issues: totalBrokenLinks });
       
-      console.log(chalk.blue('📁 Step 9b: Missing resources check...'));
+      console.log(chalk.blue('📁 Bước 9b: Kiểm tra tài nguyên thiếu...'));
       const missingResourcesResults = await this.check404Resources(directory);
       const totalMissingResources = missingResourcesResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: '9b', name: 'Missing resources check', issues: totalMissingResources });
@@ -3828,7 +4008,7 @@ class AccessibilityFixer {
       console.log(chalk.gray('💡 Link and resource issues require manual review and cannot be auto-fixed'));
       
       // Step 10: Cleanup duplicate roles
-      console.log(chalk.blue('🧹 Step 10: Cleanup duplicate roles...'));
+      console.log(chalk.blue('🧹 Bước 10: Dọn dẹp role trùng lặp...'));
       const cleanupResults = await this.cleanupDuplicateRoles(directory);
       const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
       results.steps.push({ step: 10, name: 'Cleanup duplicate roles', fixed: cleanupFixed });
@@ -3874,7 +4054,7 @@ class AccessibilityFixer {
   }
 
   async fixButtonNames(directory = '.') {
-    console.log(chalk.blue('🔘 Fixing button names...'));
+    console.log(chalk.blue('🔘 Đang sửa tên button...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -3915,7 +4095,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} button name issues across ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Tìm thấy ${totalIssuesFound} vấn đề tên button trong ${results.length} file`));
     return results;
   }
 
@@ -3991,7 +4171,7 @@ class AccessibilityFixer {
   }
 
   async fixLinkNames(directory = '.') {
-    console.log(chalk.blue('🔗 Fixing link names...'));
+    console.log(chalk.blue('🔗 Đang sửa tên link...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -4032,7 +4212,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} link name issues across ${results.length} files`));
+    console.log(chalk.blue(`\n�� Tóm tắt: Tìm thấy ${totalIssuesFound} vấn đề tên link trong ${results.length} file`));
     return results;
   }
 
@@ -4108,7 +4288,7 @@ class AccessibilityFixer {
   }
 
   async fixLandmarks(directory = '.') {
-    console.log(chalk.blue('🏛️ Fixing landmarks...'));
+    console.log(chalk.blue('🏛️ Đang sửa landmark...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -4134,7 +4314,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} landmark issues across ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Tìm thấy ${totalIssuesFound} vấn đề landmark trong ${results.length} file`));
     return results;
   }
 
@@ -4158,7 +4338,7 @@ class AccessibilityFixer {
   }
 
   async analyzeHeadings(directory = '.') {
-    console.log(chalk.blue('📑 Analyzing heading structure...'));
+    console.log(chalk.blue('📑 Đang phân tích cấu trúc heading...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -4187,7 +4367,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Analyzed heading structure in ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Đã phân tích cấu trúc heading trong ${results.length} file`));
     console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
     return results;
   }
@@ -4195,7 +4375,7 @@ class AccessibilityFixer {
 
 
   async cleanupDuplicateRoles(directory = '.') {
-    console.log(chalk.blue('🧹 Cleaning up duplicate role attributes...'));
+    console.log(chalk.blue('🧹 Đang dọn dẹp các thuộc tính role trùng lặp...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -4227,7 +4407,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Cleaned duplicate roles in ${totalIssuesFound} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Đã dọn dẹp role trùng lặp trong ${totalIssuesFound} file`));
     return results;
   }
 
@@ -4241,7 +4421,7 @@ class AccessibilityFixer {
   }
 
   async fixNestedInteractiveControls(directory = '.') {
-    console.log(chalk.blue('🎯 Fixing nested interactive controls...'));
+    console.log(chalk.blue('🎯 Đang sửa các control tương tác lồng nhau...'));
     
     const htmlFiles = await this.findHtmlFiles(directory);
     const results = [];
@@ -4285,7 +4465,7 @@ class AccessibilityFixer {
       }
     }
     
-    console.log(chalk.blue(`\n📊 Summary: Found ${totalIssuesFound} nested interactive control issues across ${results.length} files`));
+    console.log(chalk.blue(`\n📊 Tóm tắt: Tìm thấy ${totalIssuesFound} vấn đề control tương tác lồng nhau trong ${results.length} file`));
     return results;
   }
 
@@ -4486,81 +4666,81 @@ class AccessibilityFixer {
     
     try {
       // Step 1: HTML lang attributes
-      console.log(chalk.blue('📝 Step 1: HTML lang attributes...'));
+      console.log(chalk.blue('📝 Bước 1: Thuộc tính HTML lang...'));
       const langResults = await this.fixHtmlLang(directory);
       const langFixed = langResults.filter(r => r.status === 'fixed').length;
       results.steps.push({ step: 1, name: 'HTML lang attributes', fixed: langFixed });
       
       // Step 2: Alt attributes
-      console.log(chalk.blue('🖼️ Step 2: Alt attributes...'));
+      console.log(chalk.blue('🖼️ Bước 2: Thuộc tính alt...'));
       const altResults = await this.fixEmptyAltAttributes(directory);
       const altFixed = altResults.filter(r => r.status === 'fixed').length;
       const totalAltIssues = altResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 2, name: 'Alt attributes', fixed: altFixed, issues: totalAltIssues });
       
       // Step 3: Role attributes
-      console.log(chalk.blue('🎭 Step 3: Role attributes...'));
+      console.log(chalk.blue('🎭 Bước 3: Thuộc tính role...'));
       const roleResults = await this.fixRoleAttributes(directory);
       const roleFixed = roleResults.filter(r => r.status === 'fixed').length;
       const totalRoleIssues = roleResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 3, name: 'Role attributes', fixed: roleFixed, issues: totalRoleIssues });
       
       // Step 4: Aria-label attributes
-      console.log(chalk.blue('🏷️ Step 4: Aria-label attributes...'));
+      console.log(chalk.blue('🏷️ Bước 4: Thuộc tính aria-label...'));
       const ariaResults = await this.fixAriaLabels(directory);
       const ariaFixed = ariaResults.filter(r => r.status === 'processed' && r.changes > 0).length;
       const totalAriaIssues = ariaResults.reduce((sum, r) => sum + (r.changes || 0), 0);
       results.steps.push({ step: 4, name: 'Aria-label attributes', fixed: ariaFixed, issues: totalAriaIssues });
       
       // Step 5: Form labels
-      console.log(chalk.blue('📋 Step 5: Form labels...'));
+      console.log(chalk.blue('📋 Bước 5: Nhãn form...'));
       const formResults = await this.fixFormLabels(directory);
       const formFixed = formResults.filter(r => r.status === 'fixed').length;
       const totalFormIssues = formResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 5, name: 'Form labels', fixed: formFixed, issues: totalFormIssues });
       
       // Step 6: Nested interactive controls (NEW!)
-      console.log(chalk.blue('🎯 Step 6: Nested interactive controls...'));
+      console.log(chalk.blue('🎯 Bước 6: Các control tương tác lồng nhau...'));
       const nestedResults = await this.fixNestedInteractiveControls(directory);
       const nestedFixed = nestedResults.filter(r => r.status === 'fixed').length;
       const totalNestedIssues = nestedResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 6, name: 'Nested interactive controls', fixed: nestedFixed, issues: totalNestedIssues });
       
       // Step 7: Button names
-      console.log(chalk.blue('🔘 Step 7: Button names...'));
+      console.log(chalk.blue('🔘 Bước 7: Tên button...'));
       const buttonResults = await this.fixButtonNames(directory);
       const buttonFixed = buttonResults.filter(r => r.status === 'fixed').length;
       const totalButtonIssues = buttonResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 7, name: 'Button names', fixed: buttonFixed, issues: totalButtonIssues });
       
       // Step 8: Link names
-      console.log(chalk.blue('🔗 Step 8: Link names...'));
+      console.log(chalk.blue('🔗 Bước 8: Tên link...'));
       const linkResults = await this.fixLinkNames(directory);
       const linkFixed = linkResults.filter(r => r.status === 'fixed').length;
       const totalLinkIssues = linkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 8, name: 'Link names', fixed: linkFixed, issues: totalLinkIssues });
       
       // Step 9: Landmarks
-      console.log(chalk.blue('🏛️ Step 9: Landmarks...'));
+      console.log(chalk.blue('🏛️ Bước 9: Landmark...'));
       const landmarkResults = await this.fixLandmarks(directory);
       const landmarkFixed = landmarkResults.filter(r => r.status === 'fixed').length;
       const totalLandmarkIssues = landmarkResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 9, name: 'Landmarks', fixed: landmarkFixed, issues: totalLandmarkIssues });
       
       // Step 10: Heading analysis
-      console.log(chalk.blue('📑 Step 10: Heading analysis...'));
+      console.log(chalk.blue('📑 Bước 10: Phân tích heading...'));
       const headingResults = await this.analyzeHeadings(directory);
       const totalHeadingSuggestions = headingResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: 10, name: 'Heading analysis', suggestions: totalHeadingSuggestions });
       console.log(chalk.gray('💡 Heading issues require manual review and cannot be auto-fixed'));
       
       // Step 11: Broken links and missing resources check
-      console.log(chalk.blue('🔗 Step 11a: External links check...'));
+      console.log(chalk.blue('🔗 Bước 11a: Kiểm tra link bên ngoài...'));
       const brokenLinksResults = await this.checkBrokenLinks(directory);
       const totalBrokenLinks = brokenLinksResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: '11a', name: 'External links check', issues: totalBrokenLinks });
       
-      console.log(chalk.blue('📁 Step 11b: Missing resources check...'));
+      console.log(chalk.blue('�� Bước 11b: Kiểm tra tài nguyên thiếu...'));
       const missingResourcesResults = await this.check404Resources(directory);
       const totalMissingResources = missingResourcesResults.reduce((sum, r) => sum + (r.issues || 0), 0);
       results.steps.push({ step: '11b', name: 'Missing resources check', issues: totalMissingResources });
@@ -4568,7 +4748,7 @@ class AccessibilityFixer {
       console.log(chalk.gray('💡 Link and resource issues require manual review and cannot be auto-fixed'));
       
       // Step 12: Cleanup duplicate roles
-      console.log(chalk.blue('🧹 Step 12: Cleanup duplicate roles...'));
+      console.log(chalk.blue('🧹 Bước 12: Dọn dẹp role trùng lặp...'));
       const cleanupResults = await this.cleanupDuplicateRoles(directory);
       const cleanupFixed = cleanupResults.filter(r => r.status === 'fixed').length;
       results.steps.push({ step: 12, name: 'Cleanup duplicate roles', fixed: cleanupFixed });
@@ -5710,9 +5890,9 @@ class AccessibilityFixer {
     
     // Display results
     if (unusedFiles.length === 0) {
-      console.log(chalk.green('✅ No unused files found! All files are properly referenced.'));
+      console.log(chalk.green('✅ Không tìm thấy file không sử dụng! Tất cả file đều được tham chiếu đúng cách.'));
     } else {
-      console.log(chalk.yellow(`\n📋 Found ${unusedFiles.length} potentially unused files:`));
+      console.log(chalk.yellow(`\n📋 Tìm thấy ${unusedFiles.length} file có thể không sử dụng:`));
       
       unusedFiles.forEach((file, index) => {
         const icon = this.getFileIcon(file.type);
@@ -5720,12 +5900,12 @@ class AccessibilityFixer {
       });
       
       const totalSize = unusedFiles.reduce((sum, file) => sum + file.size, 0);
-      console.log(chalk.blue(`\n📊 Total unused file size: ${this.formatFileSize(totalSize)}`));
-      console.log(chalk.gray('💡 Review these files before deleting - some may be used dynamically or required for deployment'));
+      console.log(chalk.blue(`\n📊 Tổng kích thước file không sử dụng: ${this.formatFileSize(totalSize)}`));
+      console.log(chalk.gray('💡 Xem xét kỹ các file này trước khi xóa - một số có thể được sử dụng động hoặc cần thiết cho deployment'));
     }
     
     const endTime = Date.now();
-    console.log(chalk.gray(`⏱️ Analysis completed in ${endTime - startTime}ms`));
+    console.log(chalk.gray(`⏱️ Phân tích hoàn tất trong ${endTime - startTime}ms`));
     
     return {
       unusedFiles: unusedFiles,

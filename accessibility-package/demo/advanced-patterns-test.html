@@ -8,17 +8,17 @@
 </head>
 <body>
     <!-- Regular img -->
-    <img src="./assets/regular-image.jpg" alt="Regular image">
+    <img src="./assets/regular-image.jpg" alt="Regular image" role="img" aria-label="Regular image">
     
     <!-- Picture with srcset -->
     <picture>
         <source media="(min-width: 800px)" srcset="./assets/desktop-hero.jpg 1x, ./assets/desktop-hero@2x.jpg 2x">
         <source media="(min-width: 400px)" srcset="./assets/tablet-hero.jpg 1x, ./assets/tablet-hero@2x.jpg 2x">
-        <img src="./assets/mobile-hero.jpg" srcset="./assets/mobile-hero@2x.jpg 2x" alt="Hero image">
+        <img src="./assets/mobile-hero.jpg" srcset="./assets/mobile-hero@2x.jpg 2x" alt="Hero image" role="img" aria-label="Hero image">
     </picture>
     
     <!-- Data attributes (lazy loading) -->
-    <img class="lazy" data-src="./assets/lazy-image.jpg" data-background="./assets/bg-image.jpg" alt="Lazy loaded">
+    <img class="lazy" data-src="./assets/lazy-image.jpg" data-background="./assets/bg-image.jpg" alt="Lazy loaded" role="img" aria-label="Lazy loaded">
     <div data-bg="./assets/section-bg.jpg" data-image="./assets/decorative.png"></div>
     
     <!-- Used files -->

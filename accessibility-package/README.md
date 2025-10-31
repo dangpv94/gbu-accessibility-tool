@@ -22,6 +22,7 @@
 - 🎯 **Nested Controls Detection** - Detect and fix nested interactive controls
 - 🔍 **Broken Links Detection** - Detect broken external links
 - 📁 **404 Resources Detection** - Detect missing local resources (images, CSS, JS, etc.)
+- 🏷️ **Google Tag Manager Check** - Validate GTM installation (script + noscript)
 - 🗂️ **Unused Files Detection** - Find files not referenced anywhere in the project
 - ☠️ **Dead Code Analysis** - Detect unused CSS rules and JavaScript functions
 - 📏 **File Size Analysis** - Check file sizes and suggest optimizations
@@ -154,9 +155,10 @@ Fix Modes:
   --landmarks-only         Fix landmarks + cleanup
   --headings-only          Analyze heading structure with optional auto-fix
   --auto-fix-headings      Enable automatic heading structure fixes
-    --links-check            Check for broken links and 404 resources (comprehensive, no auto-fix)
+  --links-check            Check for broken links and 404 resources (comprehensive, no auto-fix)
   --broken-links           Check for broken external links only (no auto-fix)
   --404-resources          Check for missing local resources only (no auto-fix)
+  --gtm-check              Check Google Tag Manager installation (no auto-fix)
   --unused-files           Check for unused files in project
   --dead-code              Check for dead code in CSS and JavaScript
   --file-size, --size-check Check file sizes and suggest optimizations
@@ -195,6 +197,7 @@ gbu-a11y --headings-only --auto-fix-headings  # Auto-fix heading structure
 gbu-a11y --links-check       # Check broken links and missing resources + cleanup
 gbu-a11y --broken-links      # Check broken external links only + cleanup
 gbu-a11y --404-resources     # Check missing local resources only + cleanup
+gbu-a11y --gtm-check         # Check Google Tag Manager installation
 gbu-a11y --unused-files      # Check for unused files in project
 gbu-a11y --dead-code         # Check for dead CSS and JavaScript code
 gbu-a11y --file-size         # Check file sizes and suggest optimizations
@@ -357,11 +360,102 @@ await fixer.checkFileSizes('./src');
   - JavaScript functions never called
   - Variables declared but never used
   - Smart skipping of dynamic patterns
+- **Google Tag Manager Check** → Validate GTM installation
+  - Detect GTM script in `<head>` section
+  - Verify noscript fallback in `<body>` section
+  - Check container ID consistency
+  - Validate proper positioning of both snippets
+  - Reports: complete installation, missing components, position issues
 - **File Size Analysis** → Check file sizes and suggest optimizations
   - Detect large files exceeding recommended thresholds
   - Type-specific optimization suggestions (images, CSS, JS, etc.)
   - File size breakdown by type
   - Top 10 largest files reporting
+
+## 🏷️ Google Tag Manager Validation
+
+The `--gtm-check` feature validates proper Google Tag Manager installation across your project.
+
+### What It Checks
+
+1. **Script in `<head>`**: Verifies GTM script is present before `</head>` closing tag
+2. **Noscript in `<body>`**: Confirms noscript fallback is immediately after `<body>` opening tag
+3. **Container ID**: Ensures both snippets use the same GTM container ID (format: GTM-XXXXXX)
+4. **Position Validation**: Checks optimal placement of both code snippets
+
+### Usage
+
+```bash
+# Check GTM installation in entire project
+gbu-a11y --gtm-check
+
+# Check specific directory
+gbu-a11y --gtm-check ./public
+
+# Alternative commands
+gbu-a11y --check-gtm
+gbu-a11y --google-tag-manager
+```
+
+### Example Output
+
+```
+🏷️ Đang kiểm tra cài đặt Google Tag Manager (GTM)...
+
+📁 public/index.html:
+  ✅ GTM Container ID: GTM-ABC1234
+  ✅ Script trong head: Đã đặt đúng vị trí trước </head>
+  ✅ Noscript trong body: Đã đặt đúng vị trí sau <body>
+
+📁 public/about.html:
+  ✅ GTM Container ID: GTM-ABC1234
+  ✅ Script trong head: Đã đặt đúng vị trí trước </head>
+  ❌ Noscript trong body: Thiếu sau thẻ <body>
+  ❌ Thiếu GTM Noscript: Tìm thấy GTM script nhưng thiếu noscript dự phòng trong <body>
+    💡 Thêm đoạn mã GTM noscript ngay sau thẻ mở <body>
+
+📊 Tóm tắt: Đã phân tích 2 file
+  ✅ File có GTM: 2
+  ⚠️ File có vấn đề về GTM: 1
+💡 GTM cần có cả <script> trong <head> và <noscript> sau <body>
+```
+
+### GTM Installation Requirements
+
+For proper GTM installation, each page should have:
+
+1. **Script snippet in `<head>`**:
+```html
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-XXXXXX');</script>
+  <!-- End Google Tag Manager -->
+</head>
+```
+
+2. **Noscript snippet immediately after `<body>`**:
+```html
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-XXXXXX"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+  
+  <!-- Your page content -->
+</body>
+```
+
+### Common Issues Detected
+
+- ❌ **Missing Script**: GTM script not found in `<head>`
+- ❌ **Missing Noscript**: Noscript fallback not found after `<body>`
+- ⚠️ **Wrong Position**: Script or noscript not in optimal position
+- ❌ **ID Mismatch**: Different container IDs between script and noscript
+- ⚠️ **Incomplete Installation**: Only one of the two required snippets present
 
 ## 🔧 Package Management
 
