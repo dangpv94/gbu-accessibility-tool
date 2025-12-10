@@ -26,6 +26,8 @@ gbu-a11y --forms-only        # Sửa form labels + dọn dẹpio/js/gbu-accessib
 - 🔍 **Broken Links Detection** - Phát hiện liên kết external bị hỏng
 - 📁 **404 Resources Detection** - Phát hiện tài nguyên local bị thiếu (hình ảnh, CSS, JS, v.v.)
 - 🏷️ **Kiểm tra Google Tag Manager** - Xác thực cài đặt GTM (script + noscript)
+- 🏷️ **Xác thực Meta Tags** - Kiểm tra lỗi chính tả và cú pháp trong meta tags và Open Graph Protocol
+- ✏️ **Tự động sửa Meta Tags** - Tự động sửa lỗi chính tả trong tên property và giá trị content
 - 🗂️ **Unused Files Detection** - Tìm file không được tham chiếu ở đâu trong dự án
 - ☠️ **Dead Code Analysis** - Phát hiện CSS rules và JavaScript functions không sử dụng
 - 📏 **File Size Analysis** - Kiểm tra dung lượng file và đề xuất tối ưu hóa
@@ -164,6 +166,10 @@ Chế độ sửa lỗi:
   --broken-links           Chỉ kiểm tra liên kết external bị hỏng (không tự động sửa)
   --404-resources          Chỉ kiểm tra tài nguyên local bị thiếu (không tự động sửa)
   --gtm-check              Kiểm tra cài đặt Google Tag Manager (không tự động sửa)
+  --check-meta, --meta-check  Kiểm tra meta tags lỗi chính tả và cú pháp (không tự động sửa)
+  --fix-meta, --meta-fix   Tự động sửa lỗi chính tả và cú pháp meta tags
+  --full-report            Tạo báo cáo Excel toàn diện (tất cả kiểm tra)
+  -o, --output <file>      Đường dẫn output cho báo cáo Excel (dùng với --full-report)
   --unused-files           Kiểm tra file không sử dụng trong dự án
   --dead-code              Kiểm tra dead code trong CSS và JavaScript
   --file-size, --size-check Kiểm tra dung lượng file và đề xuất tối ưu hóa
@@ -202,6 +208,11 @@ gbu-a11y --links-check       # Kiểm tra liên kết bị hỏng và tài nguy�
 gbu-a11y --broken-links      # Chỉ kiểm tra liên kết external bị hỏng + dọn dẹp
 gbu-a11y --404-resources     # Chỉ kiểm tra tài nguyên local bị thiếu + dọn dẹp
 gbu-a11y --gtm-check         # Kiểm tra cài đặt Google Tag Manager
+gbu-a11y --check-meta        # Kiểm tra meta tags lỗi chính tả và cú pháp
+gbu-a11y --fix-meta          # Tự động sửa lỗi chính tả meta tags
+gbu-a11y --fix-meta --dry-run  # Xem trước sửa lỗi meta tags
+gbu-a11y --full-report       # Tạo báo cáo Excel toàn diện
+gbu-a11y --full-report -o report.xlsx  # Đường dẫn output tùy chỉnh
 gbu-a11y --unused-files      # Kiểm tra file không sử dụng trong dự án
 gbu-a11y --dead-code         # Kiểm tra dead CSS và JavaScript code
 gbu-a11y --file-size         # Kiểm tra dung lượng file và đề xuất tối ưu hóa
@@ -382,6 +393,18 @@ await fixer.checkFileSizes('./src');
   - Kiểm tra tính nhất quán của container ID
   - Xác thực vị trí đặt đúng của cả hai đoạn mã
   - Báo cáo: cài đặt hoàn chỉnh, thiếu thành phần, vấn đề vị trí
+- **Xác thực Meta Tags** → Kiểm tra lỗi chính tả và cú pháp trong meta tags
+  - Phát hiện lỗi chính tả property name (og:titel → og:title, discription → description)
+  - Phát hiện lỗi chính tả content value (websit → website, ja_jp → ja_JP)
+  - Kiểm tra lỗi cú pháp (thiếu content, giá trị rỗng)
+  - Hỗ trợ Open Graph Protocol và Twitter Card
+  - 40+ pattern lỗi chính tả phổ biến trong dictionary
+- **Tự động sửa Meta Tags** → Tự động sửa lỗi meta tags
+  - Sửa lỗi chính tả property name chỉ trong một click
+  - Sửa lỗi chính tả content value
+  - Xử lý nhiều lỗi trên cùng một tag
+  - Chế độ dry-run để xem trước
+  - Hỗ trợ backup để an toàn
 - **Phân tích dung lượng file** → Kiểm tra kích thước file và đề xuất tối ưu hóa
   - Phát hiện file lớn vượt ngưỡng khuyến nghị
   - Đề xuất tối ưu hóa theo từng loại file (hình ảnh, CSS, JS, v.v.)
@@ -461,6 +484,126 @@ gbu-a11y --google-tag-manager
   height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <!-- End Google Tag Manager (noscript) -->
   
+  <!-- Nội dung trang của bạn -->
+</body>
+```
+
+## 🏷️ Xác thực và Tự động sửa Meta Tags
+
+Tính năng `--check-meta` và `--fix-meta` giúp bạn duy trì meta tags và Open Graph Protocol chính xác.
+
+### Những gì được kiểm tra
+
+1. **Lỗi chính tả Property Name**: Phát hiện lỗi chính tả phổ biến trong meta tag properties
+   - `og:titel` → `og:title`
+   - `og:descripion` → `og:description`
+   - `og:sitename` → `og:site_name`
+   - `discription` → `description`
+   - Và 40+ lỗi chính tả phổ biến khác
+
+2. **Lỗi chính tả Content Value**: Sửa giá trị không chính xác
+   - `websit` → `website` (og:type)
+   - `ja_jp` → `ja_JP` (og:locale)
+   - `summary_larg_image` → `summary_large_image` (twitter:card)
+
+3. **Lỗi cú pháp**: Xác định vấn đề cấu trúc
+   - Thiếu thuộc tính content
+   - Giá trị content rỗng
+   - Lẫn lộn kiểu dấu ngoặc
+
+### Cách sử dụng
+
+```bash
+# Kiểm tra lỗi meta tags
+gbu-a11y --check-meta
+
+# Kiểm tra thư mục cụ thể
+gbu-a11y --check-meta ./public
+
+# Tự động sửa lỗi
+gbu-a11y --fix-meta
+
+# Xem trước sửa lỗi mà không áp dụng
+gbu-a11y --fix-meta --dry-run
+
+# Sửa với backup
+gbu-a11y --fix-meta --backup
+
+# Các lệnh thay thế
+gbu-a11y --meta-check
+gbu-a11y --meta-fix
+```
+
+### Ví dụ Output
+
+**Chế độ kiểm tra (`--check-meta`)**:
+```
+🔍 Checking meta tags for typos and syntax errors...
+
+❌ public/index.html
+   1. Lỗi chính tả property: "og:titel" → "og:title"
+   2. Lỗi chính tả property: "og:descripion" → "og:description"
+   3. Lỗi giá trị og:type: "websit" → "website"
+   4. Lỗi chính tả property: "twitter:car" → "twitter:card"
+
+✅ public/about.html - No errors
+
+📊 Summary:
+   Total files checked: 2
+   Files with errors: 1
+   Total errors found: 4
+   Files OK: 1
+
+💡 Sử dụng --meta-fix để tự động sửa các lỗi này
+```
+
+**Chế độ sửa lỗi (`--fix-meta`)**:
+```
+🔧 Fixing meta tag typos and syntax errors...
+
+🔧 Fixing: public/index.html
+   ✓ Fixed property: og:titel → og:title
+   ✓ Fixed property: og:descripion → og:description
+   ✓ Fixed og:type value: websit → website
+   ✓ Fixed property: twitter:car → twitter:card
+   💾 Saved 4 fix(es) to public/index.html
+
+✅ public/about.html - No errors to fix
+
+📊 Summary:
+   Total files checked: 2
+   Files fixed: 1
+   Total fixes applied: 4
+```
+
+### Các pattern lỗi chính tả được hỗ trợ
+
+**Open Graph Properties**:
+- `og:titel`, `og:tittle`, `og:tilte` → `og:title`
+- `og:descripion`, `og:discription`, `og:desciption` → `og:description`
+- `og:imge`, `og:iamge` → `og:image`
+- `og:typ`, `og:tipe` → `og:type`
+- `og:sitename`, `og:sit_name` → `og:site_name`
+- `og:local` → `og:locale`
+
+**Twitter Card Properties**:
+- `twitter:car` → `twitter:card`
+- `twitter:titel`, `twitter:tittle` → `twitter:title`
+- `twitter:descripion`, `twitter:discription` → `twitter:description`
+- `twitter:imge` → `twitter:image`
+- `twitter:creater` → `twitter:creator`
+
+**Meta Tag Properties**:
+- `discription`, `descripion`, `desciption` → `description`
+- `viewpor`, `veiwport` → `viewport`
+- `keyword` → `keywords`
+- `auther`, `autor` → `author`
+
+**Content Values**:
+- `websit`, `web-site`, `artical`, `aticle` (og:type)
+- `ja_jp` → `ja_JP`, `en_us` → `en_US`, `vi_vn` → `vi_VN` (og:locale)
+- `summary_larg_image`, `summay` (twitter:card)
+
   <!-- Nội dung trang của bạn -->
 </body>
 ```

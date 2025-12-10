@@ -5833,6 +5833,163 @@ class AccessibilityFixer {
     return files;
   }
 
+  // Check meta tags in HTML files
+  async checkMetaTags(directory = '.') {
+    console.log(chalk.blue('🔍 Checking meta tags for typos and syntax errors...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    let totalFiles = 0;
+    let filesWithErrors = 0;
+    let skippedFiles = 0;
+    let totalErrors = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const analysis = this.analyzeMetaTags(content, file);
+        const relativePath = path.relative(directory, file);
+        
+        if (analysis.isIncludeFile) {
+          skippedFiles++;
+          console.log(chalk.gray(`⏭️  Skipped: ${relativePath} (include file)`));
+          continue;
+        }
+        
+        totalFiles++;
+        
+        if (analysis.errors.length > 0) {
+          filesWithErrors++;
+          totalErrors += analysis.errors.length;
+          console.log(chalk.red(`\n❌ ${relativePath}`));
+          analysis.errors.forEach((error, index) => {
+            console.log(chalk.red(`   ${index + 1}. ${error}`));
+          });
+        } else {
+          console.log(chalk.green(`✅ ${relativePath} - No errors`));
+        }
+      } catch (error) {
+        console.log(chalk.red(`❌ Error reading ${file}: ${error.message}`));
+      }
+    }
+    
+    console.log(chalk.blue('\n📊 Summary:'));
+    console.log(`   Total files checked: ${totalFiles}`);
+    console.log(`   Files skipped (includes): ${skippedFiles}`);
+    console.log(chalk.red(`   Files with errors: ${filesWithErrors}`));
+    console.log(chalk.red(`   Total errors found: ${totalErrors}`));
+    console.log(chalk.green(`   Files OK: ${totalFiles - filesWithErrors}`));
+    
+    if (filesWithErrors > 0) {
+      console.log(chalk.yellow(`\n💡 Sử dụng --meta-fix để tự động sửa các lỗi này`));
+    }
+  }
+
+  // Fix meta tags in HTML files
+  async fixMetaTags(directory = '.', options = {}) {
+    const { dryRun = false, backup = false } = options;
+    console.log(chalk.blue('🔧 Fixing meta tag typos and syntax errors...'));
+    
+    const htmlFiles = await this.findHtmlFiles(directory);
+    let totalFiles = 0;
+    let fixedFiles = 0;
+    let skippedFiles = 0;
+    let totalFixes = 0;
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const analysis = this.analyzeMetaTags(content, file);
+        const relativePath = path.relative(directory, file);
+        
+        if (analysis.isIncludeFile) {
+          skippedFiles++;
+          console.log(chalk.gray(`⏭️  Skipped: ${relativePath} (include file)`));
+          continue;
+        }
+        
+        totalFiles++;
+        
+        if (analysis.fixable.length === 0) {
+          console.log(chalk.green(`✅ ${relativePath} - No errors to fix`));
+          continue;
+        }
+        
+        console.log(chalk.yellow(`\n🔧 Fixing: ${relativePath}`));
+        
+        let newContent = content;
+        let fixCount = 0;
+        
+        // Group fixes by tag to handle multiple fixes on same tag
+        const tagFixes = new Map();
+        for (const fix of analysis.fixable) {
+          if (!tagFixes.has(fix.fullTag)) {
+            tagFixes.set(fix.fullTag, []);
+          }
+          tagFixes.get(fix.fullTag).push(fix);
+        }
+        
+        // Apply all fixes for each tag
+        for (const [originalTag, fixes] of tagFixes) {
+          let newTag = originalTag;
+          
+          for (const fix of fixes) {
+            if (fix.type === 'property') {
+              // Fix property name typo
+              newTag = newTag.replace(
+                new RegExp(`((?:name|property)\\s*=\\s*["'])${fix.wrong.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(["'])`, 'i'),
+                `$1${fix.correct}$2`
+              );
+              console.log(chalk.green(`   ✓ Fixed property: ${fix.wrong} → ${fix.correct}`));
+              fixCount++;
+            } else if (fix.type === 'content') {
+              // Fix content value typo
+              newTag = newTag.replace(
+                new RegExp(`(content\\s*=\\s*["'])${fix.wrong.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(["'])`, 'i'),
+                `$1${fix.correct}$2`
+              );
+              console.log(chalk.green(`   ✓ Fixed ${fix.property} value: ${fix.wrong} → ${fix.correct}`));
+              fixCount++;
+            }
+          }
+          
+          // Replace the original tag with the fixed tag
+          newContent = newContent.replace(originalTag, newTag);
+        }
+        
+        // Save file if modified
+        if (fixCount > 0) {
+          if (!dryRun) {
+            // Create backup if enabled
+            if (backup) {
+              const backupPath = `${file}.bak`;
+              await fs.writeFile(backupPath, content, 'utf8');
+            }
+            
+            await fs.writeFile(file, newContent, 'utf8');
+            console.log(chalk.green(`   💾 Saved ${fixCount} fix(es) to ${relativePath}`));
+            fixedFiles++;
+            totalFixes += fixCount;
+          } else {
+            console.log(chalk.blue(`   🔍 Dry run - would fix ${fixCount} error(s) in ${relativePath}`));
+            totalFixes += fixCount;
+          }
+        }
+      } catch (error) {
+        console.log(chalk.red(`❌ Error processing ${file}: ${error.message}`));
+      }
+    }
+    
+    console.log(chalk.blue('\n📊 Summary:'));
+    console.log(`   Total files checked: ${totalFiles}`);
+    console.log(`   Files skipped (includes): ${skippedFiles}`);
+    console.log(chalk.green(`   Files fixed: ${fixedFiles}`));
+    console.log(chalk.green(`   Total fixes applied: ${totalFixes}`));
+    
+    if (dryRun) {
+      console.log(chalk.blue('\n💡 This was a dry run. Use without --dry-run to apply changes.'));
+    }
+  }
+
   // Check for unused files in the project - enhanced for comprehensive project-wide scanning
   async checkUnusedFiles(directory = '.') {
     console.log(chalk.blue('🗂️ Analyzing unused files across entire project...'));
@@ -6124,12 +6281,14 @@ class AccessibilityFixer {
       /<a[^>]*href\s*=\s*["']([^"'#]+\.html?)["']/gi,
       // Video/Audio
       /<(?:video|audio)[^>]*src\s*=\s*["']([^"']+)["']/gi,
+      // Video poster
+      /<video[^>]*poster\s*=\s*["']([^"']+)["']/gi,
       // Object/Embed
       /<(?:object|embed)[^>]*src\s*=\s*["']([^"']+)["']/gi,
       // Iframe
       /<iframe[^>]*src\s*=\s*["']([^"']+)["']/gi,
-      // Meta (for icons)
-      /<meta[^>]*content\s*=\s*["']([^"']+\.(ico|png|jpg|jpeg|svg))["']/gi,
+      // Meta tags (for OG images, icons) - including absolute URLs
+      /<meta[^>]*content\s*=\s*["']([^"']+)["']/gi,
       // Server Side Includes (SSI)
       /<!--#include\s+virtual\s*=\s*["']([^"']+)["']\s*-->/gi,
       /<!--#include\s+file\s*=\s*["']([^"']+)["']\s*-->/gi
@@ -6140,23 +6299,75 @@ class AccessibilityFixer {
       while ((match = pattern.exec(content)) !== null) {
         const url = match[1];
         
-        // Handle srcset format: "image1.jpg 1x, image2.jpg 2x"
+        // Handle srcset format: "image1.jpg 1x, image2.jpg 2x" or "image1.jpg 480w, image2.jpg 800w"
         if (pattern.source.includes('srcset')) {
-          const srcsetUrls = url.split(',').map(item => item.trim().split(' ')[0]);
-          srcsetUrls.forEach(srcUrl => {
-            if (this.isLocalFile(srcUrl)) {
-              this.addNormalizedUrl(references, srcUrl);
+          // Split by comma to get individual srcset entries
+          const srcsetEntries = url.split(',');
+          srcsetEntries.forEach(entry => {
+            // Each entry format: "url descriptor" where descriptor is 1x, 2x, 480w, etc.
+            // Split by whitespace and take the first part (the URL)
+            const parts = entry.trim().split(/\s+/);
+            const srcUrl = parts[0];
+            
+            if (srcUrl) {
+              // Check if it's a local file
+              if (this.isLocalFile(srcUrl)) {
+                this.addNormalizedUrl(references, srcUrl);
+              } else if (this.isAbsoluteUrlToLocalFile(srcUrl)) {
+                // Extract local path from absolute URL (e.g., https://example.com/assets/img/file.png -> /assets/img/file.png)
+                const localPath = this.extractLocalPathFromAbsoluteUrl(srcUrl);
+                if (localPath) {
+                  this.addNormalizedUrl(references, localPath);
+                }
+              }
             }
           });
         } else {
+          // Regular src/href/content attributes
           if (this.isLocalFile(url)) {
             this.addNormalizedUrl(references, url);
+          } else if (this.isAbsoluteUrlToLocalFile(url)) {
+            // Extract local path from absolute URL
+            const localPath = this.extractLocalPathFromAbsoluteUrl(url);
+            if (localPath) {
+              this.addNormalizedUrl(references, localPath);
+            }
           }
         }
       }
     }
     
     return references;
+  }
+
+  // Check if URL is an absolute URL that points to a local file (same domain or project assets)
+  isAbsoluteUrlToLocalFile(url) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return false;
+    }
+    
+    // Check if URL contains common asset paths (customize based on your project structure)
+    // This helps identify URLs like: https://www.example.com/assets/img/file.png
+    return url.includes('/assets/') || 
+           url.includes('/static/') || 
+           url.includes('/img/') ||
+           url.includes('/images/') ||
+           url.includes('/css/') ||
+           url.includes('/js/') ||
+           url.includes('/media/') ||
+           url.includes('/fonts/') ||
+           url.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|ico|pdf|mp4|webm)$/i);
+  }
+
+  // Extract local path from absolute URL
+  // e.g., "https://www.example.com/assets/img/file.png" -> "/assets/img/file.png"
+  extractLocalPathFromAbsoluteUrl(url) {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.pathname; // Returns "/assets/img/file.png"
+    } catch (error) {
+      return null;
+    }
   }
 
   // Helper method to add normalized URL variations
@@ -7244,6 +7455,1183 @@ class AccessibilityFixer {
     }
     
     return null;
+  }
+
+  /**
+   * Generate comprehensive Excel report
+   * Covers: Meta Tags, Accessibility, Forms, Buttons, Headings, Broken Links, Unused Files, File Size, GTM
+   */
+  async generateFullReport(directory = '.', outputPath = null) {
+    const ExcelJS = require('exceljs');
+    const startTime = Date.now();
+    
+    console.log(chalk.blue('📊 Đang tạo báo cáo toàn diện...'));
+    console.log(chalk.gray(`Thư mục: ${path.resolve(directory)}`));
+    console.log('');
+    
+    // Initialize workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'GBU Accessibility Tool';
+    workbook.created = new Date();
+    
+    // Store all results
+    const allResults = {
+      meta: [],
+      accessibility: [],
+      forms: [],
+      buttons: [],
+      headings: [],
+      brokenLinks: [],
+      missingResources: [],
+      unusedFiles: [],
+      fileSize: [],
+      gtm: [],
+      summary: {
+        totalFiles: 0,
+        totalIssues: 0,
+        totalWarnings: 0,
+        totalRecommendations: 0
+      }
+    };
+    
+    // Style definitions
+    const headerStyle = {
+      font: { bold: true, color: { argb: 'FFFFFFFF' } },
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } },
+      alignment: { horizontal: 'center', vertical: 'middle' },
+      border: {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      }
+    };
+    
+    const errorStyle = {
+      font: { color: { argb: 'FFFF0000' } },
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } }
+    };
+    
+    const warningStyle = {
+      font: { color: { argb: 'FF9C5700' } },
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB9C' } }
+    };
+    
+    const recommendationStyle = {
+      font: { color: { argb: 'FF0070C0' } },
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEBF7' } }
+    };
+    
+    const successStyle = {
+      font: { color: { argb: 'FF006100' } },
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } }
+    };
+
+    // ============ SUMMARY SHEET ============
+    const summarySheet = workbook.addWorksheet('📋 Summary', { 
+      properties: { tabColor: { argb: 'FF4472C4' } } 
+    });
+    
+    summarySheet.columns = [
+      { header: 'Thống kê', key: 'stat', width: 35 },
+      { header: 'Giá trị', key: 'value', width: 20 }
+    ];
+    
+    summarySheet.getRow(1).eachCell(cell => {
+      cell.style = headerStyle;
+    });
+
+    // ============ 1. META TAGS CHECK ============
+    console.log(chalk.blue('🏷️  Đang kiểm tra Meta Tags...'));
+    try {
+      const metaResults = await this.checkMetaTagsForReport(directory);
+      allResults.meta = metaResults;
+      
+      const metaSheet = workbook.addWorksheet('🏷️ Meta Tags');
+      metaSheet.columns = [
+        { header: 'File', key: 'file', width: 50 },
+        { header: 'Loại', key: 'type', width: 15 },
+        { header: 'Vấn đề', key: 'issue', width: 40 },
+        { header: 'Mô tả', key: 'description', width: 50 },
+        { header: 'Đề xuất', key: 'suggestion', width: 60 },
+        { header: 'Mức độ', key: 'severity', width: 15 }
+      ];
+      
+      metaSheet.getRow(1).eachCell(cell => {
+        cell.style = headerStyle;
+      });
+      
+      for (const result of metaResults) {
+        if (result.status === 'skipped') continue;
+        
+        const relativePath = path.relative(directory, result.file);
+        
+        for (const issue of (result.metaAnalysis?.issues || [])) {
+          const row = metaSheet.addRow({
+            file: relativePath,
+            type: 'Error',
+            issue: issue.type,
+            description: issue.description,
+            suggestion: issue.suggestion || '',
+            severity: '❌ Lỗi'
+          });
+          row.getCell('severity').style = errorStyle;
+          allResults.summary.totalIssues++;
+        }
+        
+        for (const warning of (result.metaAnalysis?.warnings || [])) {
+          const row = metaSheet.addRow({
+            file: relativePath,
+            type: 'Warning',
+            issue: warning.type,
+            description: warning.description,
+            suggestion: warning.suggestion || '',
+            severity: '⚠️ Cảnh báo'
+          });
+          row.getCell('severity').style = warningStyle;
+          allResults.summary.totalWarnings++;
+        }
+        
+        for (const rec of (result.metaAnalysis?.recommendations || [])) {
+          const row = metaSheet.addRow({
+            file: relativePath,
+            type: 'Recommendation',
+            issue: rec.type,
+            description: rec.description,
+            suggestion: rec.suggestion || '',
+            severity: '💎 Khuyến nghị'
+          });
+          row.getCell('severity').style = recommendationStyle;
+          allResults.summary.totalRecommendations++;
+        }
+      }
+      
+      metaSheet.autoFilter = 'A1:F1';
+      console.log(chalk.green(`  ✅ Meta Tags: ${metaResults.filter(r => r.status === 'analyzed').length} file`));
+    } catch (error) {
+      console.log(chalk.yellow(`  ⚠️ Meta Tags: ${error.message}`));
+    }
+
+    // ============ 2. ACCESSIBILITY CHECK ============
+    console.log(chalk.blue('♿ Đang kiểm tra Accessibility (Alt, Aria)...'));
+    try {
+      const accessResults = await this.checkAccessibilityForReport(directory);
+      allResults.accessibility = accessResults;
+      
+      const accessSheet = workbook.addWorksheet('♿ Accessibility');
+      accessSheet.columns = [
+        { header: 'File', key: 'file', width: 50 },
+        { header: 'Loại lỗi', key: 'type', width: 20 },
+        { header: 'Mô tả', key: 'description', width: 60 },
+        { header: 'Element', key: 'element', width: 40 },
+        { header: 'Mức độ', key: 'severity', width: 15 }
+      ];
+      
+      accessSheet.getRow(1).eachCell(cell => {
+        cell.style = headerStyle;
+      });
+      
+      for (const result of accessResults) {
+        const relativePath = path.relative(directory, result.file);
+        for (const issue of (result.issues || [])) {
+          const row = accessSheet.addRow({
+            file: relativePath,
+            type: issue.type,
+            description: issue.description,
+            element: issue.element || '',
+            severity: '❌ Lỗi'
+          });
+          row.getCell('severity').style = errorStyle;
+          allResults.summary.totalIssues++;
+        }
+      }
+      
+      accessSheet.autoFilter = 'A1:E1';
+      console.log(chalk.green(`  ✅ Accessibility: ${accessResults.length} file có vấn đề`));
+    } catch (error) {
+      console.log(chalk.yellow(`  ⚠️ Accessibility: ${error.message}`));
+    }
+
+    // ============ 3. FORMS CHECK ============
+    console.log(chalk.blue('📋 Đang kiểm tra Form Labels...'));
+    try {
+      const formsResults = await this.checkFormsForReport(directory);
+      allResults.forms = formsResults;
+      
+      const formsSheet = workbook.addWorksheet('📋 Forms');
+      formsSheet.columns = [
+        { header: 'File', key: 'file', width: 50 },
+        { header: 'Loại lỗi', key: 'type', width: 25 },
+        { header: 'Mô tả', key: 'description', width: 60 },
+        { header: 'Element', key: 'element', width: 40 },
+        { header: 'Mức độ', key: 'severity', width: 15 }
+      ];
+      
+      formsSheet.getRow(1).eachCell(cell => {
+        cell.style = headerStyle;
+      });
+      
+      for (const result of formsResults) {
+        const relativePath = path.relative(directory, result.file);
+        for (const issue of (result.issues || [])) {
+          const row = formsSheet.addRow({
+            file: relativePath,
+            type: issue.type,
+            description: issue.description,
+            element: issue.element || '',
+            severity: '❌ Lỗi'
+          });
+          row.getCell('severity').style = errorStyle;
+          allResults.summary.totalIssues++;
+        }
+      }
+      
+      formsSheet.autoFilter = 'A1:E1';
+      console.log(chalk.green(`  ✅ Forms: ${formsResults.length} file có vấn đề`));
+    } catch (error) {
+      console.log(chalk.yellow(`  ⚠️ Forms: ${error.message}`));
+    }
+
+    // ============ 4. BUTTONS CHECK ============
+    console.log(chalk.blue('🔘 Đang kiểm tra Button Names...'));
+    try {
+      const buttonsResults = await this.checkButtonsForReport(directory);
+      allResults.buttons = buttonsResults;
+      
+      const buttonsSheet = workbook.addWorksheet('🔘 Buttons');
+      buttonsSheet.columns = [
+        { header: 'File', key: 'file', width: 50 },
+        { header: 'Loại lỗi', key: 'type', width: 25 },
+        { header: 'Mô tả', key: 'description', width: 60 },
+        { header: 'Element', key: 'element', width: 40 },
+        { header: 'Mức độ', key: 'severity', width: 15 }
+      ];
+      
+      buttonsSheet.getRow(1).eachCell(cell => {
+        cell.style = headerStyle;
+      });
+      
+      for (const result of buttonsResults) {
+        const relativePath = path.relative(directory, result.file);
+        for (const issue of (result.issues || [])) {
+          const row = buttonsSheet.addRow({
+            file: relativePath,
+            type: issue.type,
+            description: issue.description,
+            element: issue.element || '',
+            severity: '❌ Lỗi'
+          });
+          row.getCell('severity').style = errorStyle;
+          allResults.summary.totalIssues++;
+        }
+      }
+      
+      buttonsSheet.autoFilter = 'A1:E1';
+      console.log(chalk.green(`  ✅ Buttons: ${buttonsResults.length} file có vấn đề`));
+    } catch (error) {
+      console.log(chalk.yellow(`  ⚠️ Buttons: ${error.message}`));
+    }
+
+    // ============ 5. HEADINGS CHECK ============
+    console.log(chalk.blue('📑 Đang kiểm tra Heading Structure...'));
+    try {
+      const headingsResults = await this.analyzeHeadingsForReport(directory);
+      allResults.headings = headingsResults;
+      
+      const headingsSheet = workbook.addWorksheet('📑 Headings');
+      headingsSheet.columns = [
+        { header: 'File', key: 'file', width: 50 },
+        { header: 'Loại vấn đề', key: 'type', width: 25 },
+        { header: 'Mô tả', key: 'description', width: 60 },
+        { header: 'Đề xuất', key: 'suggestion', width: 50 },
+        { header: 'Mức độ', key: 'severity', width: 15 }
+      ];
+      
+      headingsSheet.getRow(1).eachCell(cell => {
+        cell.style = headerStyle;
+      });
+      
+      for (const result of headingsResults) {
+        const relativePath = path.relative(directory, result.file);
+        for (const issue of (result.issues || [])) {
+          const row = headingsSheet.addRow({
+            file: relativePath,
+            type: issue.type,
+            description: issue.description,
+            suggestion: issue.suggestion || '',
+            severity: issue.severity === 'error' ? '❌ Lỗi' : '⚠️ Cảnh báo'
+          });
+          if (issue.severity === 'error') {
+            row.getCell('severity').style = errorStyle;
+            allResults.summary.totalIssues++;
+          } else {
+            row.getCell('severity').style = warningStyle;
+            allResults.summary.totalWarnings++;
+          }
+        }
+      }
+      
+      headingsSheet.autoFilter = 'A1:E1';
+      console.log(chalk.green(`  ✅ Headings: ${headingsResults.length} file`));
+    } catch (error) {
+      console.log(chalk.yellow(`  ⚠️ Headings: ${error.message}`));
+    }
+
+    // ============ 6. BROKEN LINKS CHECK ============
+    console.log(chalk.blue('🔗 Đang kiểm tra Broken Links...'));
+    try {
+      const linksResults = await this.checkBrokenLinksForReport(directory);
+      allResults.brokenLinks = linksResults.brokenLinks || [];
+      allResults.missingResources = linksResults.missingResources || [];
+      
+      const linksSheet = workbook.addWorksheet('🔗 Broken Links');
+      linksSheet.columns = [
+        { header: 'File nguồn', key: 'source', width: 50 },
+        { header: 'URL/Đường dẫn', key: 'url', width: 60 },
+        { header: 'Loại', key: 'type', width: 20 },
+        { header: 'Trạng thái', key: 'status', width: 15 },
+        { header: 'Mô tả', key: 'description', width: 40 }
+      ];
+      
+      linksSheet.getRow(1).eachCell(cell => {
+        cell.style = headerStyle;
+      });
+      
+      for (const link of allResults.brokenLinks) {
+        const row = linksSheet.addRow({
+          source: link.source || '',
+          url: link.url,
+          type: 'External Link',
+          status: link.status || 'Broken',
+          description: link.error || 'Link không thể truy cập'
+        });
+        row.getCell('status').style = errorStyle;
+        allResults.summary.totalIssues++;
+      }
+      
+      for (const resource of allResults.missingResources) {
+        const row = linksSheet.addRow({
+          source: resource.source || '',
+          url: resource.path,
+          type: 'Local Resource',
+          status: '404',
+          description: 'File không tồn tại'
+        });
+        row.getCell('status').style = errorStyle;
+        allResults.summary.totalIssues++;
+      }
+      
+      linksSheet.autoFilter = 'A1:E1';
+      console.log(chalk.green(`  ✅ Broken Links: ${allResults.brokenLinks.length} link, ${allResults.missingResources.length} resource`));
+    } catch (error) {
+      console.log(chalk.yellow(`  ⚠️ Broken Links: ${error.message}`));
+    }
+
+    // ============ 7. UNUSED FILES CHECK ============
+    console.log(chalk.blue('📁 Đang kiểm tra Unused Files...'));
+    try {
+      const unusedResults = await this.checkUnusedFilesForReport(directory);
+      allResults.unusedFiles = unusedResults;
+      
+      const unusedSheet = workbook.addWorksheet('📁 Unused Files');
+      unusedSheet.columns = [
+        { header: 'File', key: 'file', width: 60 },
+        { header: 'Loại', key: 'type', width: 20 },
+        { header: 'Kích thước', key: 'size', width: 15 },
+        { header: 'Ghi chú', key: 'note', width: 40 }
+      ];
+      
+      unusedSheet.getRow(1).eachCell(cell => {
+        cell.style = headerStyle;
+      });
+      
+      for (const file of unusedResults) {
+        const filePath = typeof file === 'string' ? file : file.path;
+        const fileType = (typeof file === 'object' && file.type) ? file.type : path.extname(filePath).slice(1).toUpperCase();
+        const fileSize = (typeof file === 'object' && file.size) ? this.formatFileSize(file.size) : '-';
+        
+        const row = unusedSheet.addRow({
+          file: filePath,
+          type: fileType,
+          size: fileSize,
+          note: 'Không được tham chiếu trong project'
+        });
+        row.getCell('note').style = warningStyle;
+        allResults.summary.totalWarnings++;
+      }
+      
+      unusedSheet.autoFilter = 'A1:D1';
+      console.log(chalk.green(`  ✅ Unused Files: ${unusedResults.length} file`));
+    } catch (error) {
+      console.log(chalk.yellow(`  ⚠️ Unused Files: ${error.message}`));
+    }
+
+    // ============ 8. FILE SIZE CHECK ============
+    console.log(chalk.blue('📦 Đang kiểm tra File Size (>1MB)...'));
+    try {
+      const fileSizeResults = await this.checkFileSizeForReport(directory);
+      allResults.fileSize = fileSizeResults;
+      
+      const sizeSheet = workbook.addWorksheet('📦 Large Files');
+      sizeSheet.columns = [
+        { header: 'File', key: 'file', width: 50 },
+        { header: 'Loại', key: 'type', width: 15 },
+        { header: 'Kích thước', key: 'size', width: 15 },
+        { header: 'Ngưỡng', key: 'threshold', width: 15 },
+        { header: 'Đề xuất', key: 'suggestion', width: 50 }
+      ];
+      
+      sizeSheet.getRow(1).eachCell(cell => {
+        cell.style = headerStyle;
+      });
+      
+      for (const item of fileSizeResults) {
+        const row = sizeSheet.addRow({
+          file: item.file || '',
+          type: item.type || path.extname(item.file).slice(1).toUpperCase(),
+          size: this.formatFileSize(item.size),
+          threshold: this.formatFileSize(item.threshold),
+          suggestion: item.suggestion || 'Cân nhắc tối ưu hóa file'
+        });
+        row.getCell('size').style = warningStyle;
+        allResults.summary.totalWarnings++;
+      }
+      
+      sizeSheet.autoFilter = 'A1:E1';
+      console.log(chalk.green(`  ✅ Large Files: ${fileSizeResults.length} file`));
+    } catch (error) {
+      console.log(chalk.yellow(`  ⚠️ File Size: ${error.message}`));
+    }
+
+    // ============ 9. GTM CHECK ============
+    console.log(chalk.blue('🏷️ Đang kiểm tra Google Tag Manager...'));
+    try {
+      const gtmResults = await this.checkGTMForReport(directory);
+      allResults.gtm = gtmResults;
+      
+      const gtmSheet = workbook.addWorksheet('🏷️ GTM');
+      gtmSheet.columns = [
+        { header: 'File', key: 'file', width: 50 },
+        { header: 'Trạng thái', key: 'status', width: 20 },
+        { header: 'Head Script', key: 'head', width: 15 },
+        { header: 'Body Noscript', key: 'body', width: 15 },
+        { header: 'Container ID', key: 'containerId', width: 30 },
+        { header: 'Vấn đề', key: 'issues', width: 50 }
+      ];
+      
+      gtmSheet.getRow(1).eachCell(cell => {
+        cell.style = headerStyle;
+      });
+      
+      for (const item of gtmResults) {
+        const row = gtmSheet.addRow({
+          file: item.file || '',
+          status: item.hasGTM ? '✅ Có GTM' : '❌ Không có GTM',
+          head: item.hasHeadScript ? '✅' : '❌',
+          body: item.hasBodyNoscript ? '✅' : '❌',
+          containerId: item.containerId || '-',
+          issues: (item.issues || []).join('; ') || 'Không có vấn đề'
+        });
+        if (!item.hasGTM || item.issues?.length > 0) {
+          row.getCell('status').style = errorStyle;
+          allResults.summary.totalIssues++;
+        } else {
+          row.getCell('status').style = successStyle;
+        }
+      }
+      
+      gtmSheet.autoFilter = 'A1:F1';
+      console.log(chalk.green(`  ✅ GTM: ${gtmResults.length} file`));
+    } catch (error) {
+      console.log(chalk.yellow(`  ⚠️ GTM: ${error.message}`));
+    }
+
+    // ============ FILL SUMMARY DATA ============
+    const endTime = Date.now();
+    const duration = ((endTime - startTime) / 1000).toFixed(2);
+    
+    const summaryData = [
+      { stat: '📁 Thư mục kiểm tra', value: path.resolve(directory) },
+      { stat: '📅 Ngày tạo báo cáo', value: new Date().toLocaleString('vi-VN') },
+      { stat: '⏱️ Thời gian xử lý', value: `${duration} giây` },
+      { stat: '', value: '' },
+      { stat: '🏷️ Meta Tags được phân tích', value: allResults.meta.filter(r => r.status === 'analyzed').length },
+      { stat: '♿ Accessibility Issues (Alt & Aria)', value: allResults.accessibility.length },
+      { stat: '📋 Form Issues', value: allResults.forms.length },
+      { stat: '🔘 Button Issues', value: allResults.buttons.length },
+      { stat: '📑 Heading được phân tích', value: allResults.headings.length },
+      { stat: '🔗 Broken External Links', value: allResults.brokenLinks.length },
+      { stat: '📁 Missing Resources (404)', value: allResults.missingResources.length },
+      { stat: '📁 Unused Files', value: allResults.unusedFiles.length },
+      { stat: '📦 Large Files (>1MB)', value: allResults.fileSize.length },
+      { stat: '🏷️ GTM Issues', value: allResults.gtm.length },
+      { stat: '', value: '' },
+      { stat: '❌ Tổng số lỗi (Errors)', value: allResults.summary.totalIssues },
+      { stat: '⚠️ Tổng số cảnh báo (Warnings)', value: allResults.summary.totalWarnings },
+      { stat: '💎 Tổng số khuyến nghị', value: allResults.summary.totalRecommendations }
+    ];
+    
+    for (const data of summaryData) {
+      const row = summarySheet.addRow(data);
+      if (data.stat.includes('❌')) {
+        row.getCell('value').style = errorStyle;
+      } else if (data.stat.includes('⚠️')) {
+        row.getCell('value').style = warningStyle;
+      } else if (data.stat.includes('💎')) {
+        row.getCell('value').style = recommendationStyle;
+      }
+    }
+
+    // ============ SAVE FILE ============
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const fileName = outputPath || `accessibility-report-${timestamp}.xlsx`;
+    const fullPath = path.resolve(fileName);
+    
+    await workbook.xlsx.writeFile(fullPath);
+    
+    console.log('');
+    console.log(chalk.green('═'.repeat(60)));
+    console.log(chalk.green('📊 BÁO CÁO ĐÃ ĐƯỢC TẠO THÀNH CÔNG!'));
+    console.log(chalk.green('═'.repeat(60)));
+    console.log(chalk.white(`📁 File: ${fullPath}`));
+    console.log(chalk.white(`⏱️ Thời gian: ${duration} giây`));
+    console.log('');
+    console.log(chalk.cyan('📋 Tóm tắt:'));
+    console.log(chalk.red(`   ❌ Lỗi: ${allResults.summary.totalIssues}`));
+    console.log(chalk.yellow(`   ⚠️ Cảnh báo: ${allResults.summary.totalWarnings}`));
+    console.log(chalk.blue(`   💎 Khuyến nghị: ${allResults.summary.totalRecommendations}`));
+    console.log('');
+    
+    return {
+      filePath: fullPath,
+      summary: allResults.summary,
+      duration: duration
+    };
+  }
+
+  // Helper methods for report generation
+  async checkMetaTagsForReport(directory) {
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const metaAnalysis = this.analyzeMetaTags(content, file);
+        results.push({ file, status: metaAnalysis.isIncludeFile ? 'skipped' : 'analyzed', metaAnalysis });
+      } catch (error) {
+        results.push({ file, status: 'error', error: error.message });
+      }
+    }
+    
+    return results;
+  }
+
+  analyzeMetaTags(content, filePath) {
+    const relativePath = path.relative(process.cwd(), filePath);
+    
+    // Skip include files (SSI, partials)
+    const isIncludeFile = /(?:include|partial|component|ssi|header|footer|nav|sidebar)/i.test(relativePath);
+    
+    if (isIncludeFile) {
+      return { isIncludeFile: true, errors: [], fixable: [] };
+    }
+    
+    const errors = []; // Lỗi cần sửa
+    const fixable = []; // Các lỗi có thể tự động sửa
+    
+    // Dictionary of common typos and corrections
+    const propertyTypos = {
+      // Open Graph typos
+      'og:titel': 'og:title',
+      'og:tittle': 'og:title',
+      'og:tilte': 'og:title',
+      'og:discription': 'og:description',
+      'og:descripion': 'og:description',
+      'og:desciption': 'og:description',
+      'og:imge': 'og:image',
+      'og:iamge': 'og:image',
+      'og:typ': 'og:type',
+      'og:tipe': 'og:type',
+      'og:sit_name': 'og:site_name',
+      'og:sitename': 'og:site_name',
+      'og:local': 'og:locale',
+      
+      // Twitter typos
+      'twitter:car': 'twitter:card',
+      'twitter:titel': 'twitter:title',
+      'twitter:tittle': 'twitter:title',
+      'twitter:discription': 'twitter:description',
+      'twitter:descripion': 'twitter:description',
+      'twitter:imge': 'twitter:image',
+      'twitter:iamge': 'twitter:image',
+      'twitter:sit': 'twitter:site',
+      'twitter:creater': 'twitter:creator',
+      
+      // Description typos
+      'discription': 'description',
+      'descripion': 'description',
+      'desciption': 'description',
+      
+      // Viewport typos
+      'viewpor': 'viewport',
+      'veiwport': 'viewport',
+      
+      // Keywords typos
+      'keyword': 'keywords',
+      'keywrods': 'keywords',
+      'keyowrds': 'keywords',
+      
+      // Author typos
+      'auther': 'author',
+      'autor': 'author'
+    };
+    
+    const contentTypos = {
+      // Common og:type values
+      'websit': 'website',
+      'web-site': 'website',
+      'artical': 'article',
+      'aticle': 'article',
+      
+      // Twitter card types
+      'summary_larg_image': 'summary_large_image',
+      'summary-large-image': 'summary_large_image',
+      'summay': 'summary',
+      
+      // Locale typos
+      'ja_jp': 'ja_JP',
+      'en_us': 'en_US',
+      'en-us': 'en_US',
+      'vi_vn': 'vi_VN'
+    };
+    
+    // Extract all meta tags with their full content
+    const metaPattern = /<meta\s+([^>]+)>/gi;
+    const metaTags = [];
+    let match;
+    
+    while ((match = metaPattern.exec(content)) !== null) {
+      const fullTag = match[0];
+      const attrs = match[1];
+      const nameMatch = attrs.match(/(?:name|property)\s*=\s*["']([^"']+)["']/i);
+      const contentMatch = attrs.match(/content\s*=\s*["']([^"']*)["']/i);
+      
+      if (nameMatch) {
+        metaTags.push({
+          fullTag,
+          property: nameMatch[1],
+          content: contentMatch ? contentMatch[1] : '',
+          position: match.index
+        });
+      }
+    }
+    
+    // Check for typos in property names
+    for (const tag of metaTags) {
+      const property = tag.property;
+      const content = tag.content;
+      
+      // Check property typo
+      if (propertyTypos[property.toLowerCase()]) {
+        const correct = propertyTypos[property.toLowerCase()];
+        errors.push(`Lỗi chính tả property: "${property}" → "${correct}"`);
+        fixable.push({
+          type: 'property',
+          wrong: property,
+          correct: correct,
+          fullTag: tag.fullTag
+        });
+      }
+      
+      // Check content typo for specific properties
+      const normalizedProperty = propertyTypos[property.toLowerCase()] || property;
+      
+      if (normalizedProperty === 'og:type') {
+        if (contentTypos[content.toLowerCase()]) {
+          const correct = contentTypos[content.toLowerCase()];
+          errors.push(`Lỗi giá trị og:type: "${content}" → "${correct}"`);
+          fixable.push({
+            type: 'content',
+            property: property,
+            wrong: content,
+            correct: correct,
+            fullTag: tag.fullTag
+          });
+        }
+      }
+      
+      if (normalizedProperty === 'twitter:card') {
+        if (contentTypos[content.toLowerCase()]) {
+          const correct = contentTypos[content.toLowerCase()];
+          errors.push(`Lỗi giá trị twitter:card: "${content}" → "${correct}"`);
+          fixable.push({
+            type: 'content',
+            property: property,
+            wrong: content,
+            correct: correct,
+            fullTag: tag.fullTag
+          });
+        }
+      }
+      
+      if (normalizedProperty === 'og:locale') {
+        // Check exact match first, then lowercase
+        if (contentTypos[content]) {
+          const correct = contentTypos[content];
+          errors.push(`Lỗi giá trị og:locale: "${content}" → "${correct}"`);
+          fixable.push({
+            type: 'content',
+            property: property,
+            wrong: content,
+            correct: correct,
+            fullTag: tag.fullTag
+          });
+        } else if (contentTypos[content.toLowerCase()] && content !== contentTypos[content.toLowerCase()]) {
+          const correct = contentTypos[content.toLowerCase()];
+          errors.push(`Lỗi giá trị og:locale: "${content}" → "${correct}"`);
+          fixable.push({
+            type: 'content',
+            property: property,
+            wrong: content,
+            correct: correct,
+            fullTag: tag.fullTag
+          });
+        }
+      }
+      
+      // Check for syntax errors
+      // 1. Missing content attribute
+      if (!content && !property.startsWith('charset')) {
+        errors.push(`Meta tag "${property}" thiếu thuộc tính content`);
+      }
+      
+      // 2. Empty content
+      if (content === '' && ['og:title', 'og:description', 'twitter:title', 'twitter:description', 'description'].includes(property)) {
+        errors.push(`Meta tag "${property}" có content rỗng`);
+      }
+      
+      // 3. Wrong quotes (mixed single/double)
+      if (tag.fullTag.match(/name=['"]/) && tag.fullTag.match(/content=["'][^"']*['"]/) && 
+          ((tag.fullTag.includes('name="') && tag.fullTag.includes("content='")) ||
+           (tag.fullTag.includes("name='") && tag.fullTag.includes('content="')))) {
+        errors.push(`Meta tag "${property}" sử dụng lẫn lộn dấu ngoặc đơn/kép`);
+      }
+    }
+    
+    return {
+      isIncludeFile: false,
+      errors,
+      fixable,
+      metaTags,
+      hasErrors: errors.length > 0
+    };
+  }
+
+  async checkAccessibilityForReport(directory) {
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = [];
+        
+        // 1. Check Images (Alt text)
+        const imgPattern = /<img\s+[^>]*>/gi;
+        let match;
+        while ((match = imgPattern.exec(content)) !== null) {
+          const imgTag = match[0];
+          const altMatch = imgTag.match(/alt=["']([^"']*)["']/i);
+          
+          if (!altMatch) {
+            issues.push({ type: 'Missing Alt', description: 'Thẻ img thiếu thuộc tính alt', element: imgTag });
+          } else if (altMatch[1].trim() === '') {
+            // Empty alt is ONLY okay for decorative images with role="presentation" or aria-hidden="true"
+            const isDecorative = imgTag.includes('role="presentation"') || imgTag.includes('aria-hidden="true"');
+            if (!isDecorative) {
+              issues.push({ type: 'Empty Alt', description: 'Alt text bị bỏ trống (không phải ảnh trang trí)', element: imgTag });
+            }
+          }
+        }
+
+        // 2. Check Aria Labels - always report empty aria-label as error
+        const ariaPattern = /<([a-z][a-z0-9]*)\s+[^>]*aria-label=["']([^"']*)["'][^>]*>/gi;
+        while ((match = ariaPattern.exec(content)) !== null) {
+          const ariaValue = match[2].trim();
+          if (ariaValue === '') {
+            issues.push({ type: 'Empty Aria-Label', description: 'Thuộc tính aria-label bị bỏ trống', element: `<${match[1]} aria-label=""...>` });
+          }
+        }
+
+        if (issues.length > 0) {
+          results.push({ file, issues });
+        }
+      } catch (error) {
+        // Skip
+      }
+    }
+    return results;
+  }
+
+  async checkFormsForReport(directory) {
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = [];
+        
+        // Check Forms (Labels)
+        const inputPattern = /<input\s+[^>]*>/gi;
+        let match;
+        while ((match = inputPattern.exec(content)) !== null) {
+          const inputTag = match[0];
+          const typeMatch = inputTag.match(/type=["']([^"']*)["']/i);
+          const type = typeMatch ? typeMatch[1].toLowerCase() : 'text';
+          
+          if (['text', 'password', 'email', 'search', 'tel', 'url', 'number', 'date'].includes(type)) {
+            const hasId = inputTag.match(/id=["']([^"']*)["']/i);
+            const hasAriaLabel = inputTag.includes('aria-label');
+            const hasAriaLabelledBy = inputTag.includes('aria-labelledby');
+            
+            if (!hasAriaLabel && !hasAriaLabelledBy) {
+              let hasLabel = false;
+              if (hasId) {
+                const id = hasId[1];
+                const labelPattern = new RegExp(`<label\\s+[^>]*for=["']${id}["']`, 'i');
+                if (labelPattern.test(content)) {
+                  hasLabel = true;
+                }
+              }
+              
+              if (!hasLabel) {
+                issues.push({ type: 'Missing Form Label', description: `Input type="${type}" thiếu label hoặc aria-label`, element: inputTag });
+              }
+            }
+          }
+        }
+
+        if (issues.length > 0) {
+          results.push({ file, issues });
+        }
+      } catch (error) {
+        // Skip
+      }
+    }
+    return results;
+  }
+
+  async checkButtonsForReport(directory) {
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = [];
+        
+        // Check Buttons (Name/Content)
+        const buttonPattern = /<button\s*([^>]*)>([\s\S]*?)<\/button>/gi;
+        let match;
+        while ((match = buttonPattern.exec(content)) !== null) {
+          const attrs = match[1];
+          const innerContent = match[2].trim();
+          const hasAriaLabel = attrs.includes('aria-label');
+          const hasAriaLabelledBy = attrs.includes('aria-labelledby');
+          
+          if (innerContent === '' && !hasAriaLabel && !hasAriaLabelledBy) {
+            if (!innerContent.match(/<img\s+[^>]*alt=["'][^"']+["']/i)) {
+              issues.push({ type: 'Empty Button', description: 'Button rỗng không có text hoặc aria-label', element: `<button ${attrs}>...` });
+            }
+          }
+        }
+
+        if (issues.length > 0) {
+          results.push({ file, issues });
+        }
+      } catch (error) {
+        // Skip
+      }
+    }
+    return results;
+  }
+
+  async analyzeHeadingsForReport(directory) {
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const results = [];
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const issues = this.analyzeHeadingStructure(content);
+        if (issues.length > 0) {
+          results.push({ file, issues });
+        }
+      } catch (error) {
+        // Skip files with errors
+      }
+    }
+    
+    return results;
+  }
+
+  analyzeHeadingStructure(content) {
+    const issues = [];
+    const headingPattern = /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi;
+    const headings = [];
+    let match;
+    
+    while ((match = headingPattern.exec(content)) !== null) {
+      headings.push({
+        level: parseInt(match[1]),
+        text: match[2].replace(/<[^>]+>/g, '').trim()
+      });
+    }
+    
+    // Check for missing h1
+    const hasH1 = headings.some(h => h.level === 1);
+    if (!hasH1 && headings.length > 0) {
+      issues.push({
+        type: 'Thiếu H1',
+        description: 'Trang không có thẻ H1',
+        suggestion: 'Thêm thẻ H1 làm tiêu đề chính',
+        severity: 'error'
+      });
+    }
+    
+    // Check for multiple h1s
+    const h1Count = headings.filter(h => h.level === 1).length;
+    if (h1Count > 1) {
+      issues.push({
+        type: 'Nhiều H1',
+        description: `Trang có ${h1Count} thẻ H1`,
+        suggestion: 'Chỉ nên có 1 thẻ H1 duy nhất',
+        severity: 'warning'
+      });
+    }
+    
+    // Check for skipped levels
+    for (let i = 1; i < headings.length; i++) {
+      const prev = headings[i - 1].level;
+      const curr = headings[i].level;
+      if (curr > prev + 1) {
+        issues.push({
+          type: 'Bỏ qua cấp heading',
+          description: `Nhảy từ H${prev} sang H${curr}`,
+          suggestion: `Không nên bỏ qua cấp heading`,
+          severity: 'warning'
+        });
+      }
+    }
+    
+    return issues;
+  }
+
+  async checkBrokenLinksForReport(directory) {
+    const htmlFiles = await this.findHtmlFiles(directory);
+    const missingResources = [];
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        const fileDir = path.dirname(file);
+        
+        // Check src attributes (images, scripts)
+        const srcPattern = /src=["']([^"']+)["']/gi;
+        let match;
+        while ((match = srcPattern.exec(content)) !== null) {
+          const src = match[1];
+          // Skip external links, data URIs, and template variables
+          if (src.startsWith('http') || src.startsWith('//') || src.startsWith('data:') || src.includes('{{') || src.includes('<%')) continue;
+          
+          const cleanSrc = src.split('?')[0].split('#')[0];
+          // Handle absolute paths (starting with /) - resolve from project root
+          const absolutePath = cleanSrc.startsWith('/') 
+            ? path.join(directory, cleanSrc)
+            : path.resolve(fileDir, cleanSrc);
+          
+          try {
+            await fs.access(absolutePath);
+          } catch {
+            missingResources.push({
+              source: path.relative(directory, file),
+              path: src,
+              type: 'Missing Resource'
+            });
+          }
+        }
+        
+        // Check href attributes (css, links) - only check local files
+        const hrefPattern = /href=["']([^"']+)["']/gi;
+        while ((match = hrefPattern.exec(content)) !== null) {
+          const href = match[1];
+          // Skip external, anchors, javascript, mailto, tel
+          if (href.startsWith('http') || href.startsWith('//') || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) continue;
+          
+          const cleanHref = href.split('?')[0].split('#')[0];
+          // Handle absolute paths (starting with /) - resolve from project root
+          const absolutePath = cleanHref.startsWith('/') 
+            ? path.join(directory, cleanHref)
+            : path.resolve(fileDir, cleanHref);
+          
+          try {
+            await fs.access(absolutePath);
+          } catch {
+            missingResources.push({
+              source: path.relative(directory, file),
+              path: href,
+              type: 'Broken Local Link'
+            });
+          }
+        }
+      } catch (error) {
+        // Skip
+      }
+    }
+    
+    return { brokenLinks: [], missingResources };
+  }
+
+  async checkUnusedFilesForReport(directory) {
+    // Use the same logic as checkUnusedFiles for consistency
+    const result = await this.checkUnusedFiles(directory, { returnDetails: true });
+    return result.unusedFiles || [];
+  }
+
+  async checkFileSizeForReport(directory) {
+    const results = [];
+    const ONE_MB = 1024 * 1024;
+    
+    try {
+      const files = await this.findAllFiles(directory);
+      for (const file of files) {
+        try {
+          const stats = await fs.stat(file);
+          if (stats.size > ONE_MB) {
+            const ext = path.extname(file).toLowerCase();
+            results.push({
+              file: path.relative(directory, file),
+              type: ext.slice(1).toUpperCase(),
+              size: stats.size,
+              threshold: ONE_MB,
+              suggestion: this.getFileSizeSuggestion(ext)
+            });
+          }
+        } catch (e) {
+          // Skip
+        }
+      }
+    } catch (error) {
+      // Handle directory errors
+    }
+    
+    return results;
+  }
+
+  getFileSizeSuggestion(ext) {
+    const suggestions = {
+      '.jpg': 'Nén ảnh với TinyPNG hoặc chuyển sang WebP',
+      '.jpeg': 'Nén ảnh với TinyPNG hoặc chuyển sang WebP',
+      '.png': 'Nén ảnh với TinyPNG hoặc chuyển sang WebP',
+      '.gif': 'Cân nhắc chuyển sang video MP4 hoặc WebP animated',
+      '.svg': 'Tối ưu SVG với SVGO',
+      '.css': 'Minify CSS và loại bỏ code không dùng',
+      '.js': 'Minify JS, tree-shaking và code splitting',
+      '.html': 'Minify HTML và loại bỏ comments',
+      '.mp4': 'Nén video hoặc dùng dịch vụ streaming',
+      '.pdf': 'Nén PDF'
+    };
+    return suggestions[ext] || 'File > 1MB. Cân nhắc tối ưu hóa hoặc lazy loading.';
+  }
+
+  async checkGTMForReport(directory) {
+    const results = [];
+    const htmlFiles = await this.findHtmlFiles(directory);
+    
+    for (const file of htmlFiles) {
+      try {
+        const content = await fs.readFile(file, 'utf8');
+        
+        if (!/<html/i.test(content)) continue;
+        
+        // Find all GTM IDs
+        const gtmIdPattern = /GTM-[A-Z0-9]+/g;
+        const matches = content.match(gtmIdPattern) || [];
+        const uniqueIds = [...new Set(matches)];
+        
+        // Count GTM head scripts
+        const gtmHeadPattern = /<script[\s\S]*?gtm\.js[\s\S]*?<\/script>/gi;
+        const headScripts = content.match(gtmHeadPattern) || [];
+        const headScriptCount = headScripts.filter(script => script.includes('googletagmanager.com/gtm.js')).length;
+        
+        // Count GTM body noscripts
+        const gtmBodyPattern = /<noscript>[\s\S]*?googletagmanager\.com\/ns\.html[\s\S]*?<\/noscript>/gi;
+        const bodyNoscripts = content.match(gtmBodyPattern) || [];
+        const bodyNoscriptCount = bodyNoscripts.length;
+        
+        const hasGTM = uniqueIds.length > 0;
+        const hasHeadScript = headScriptCount > 0;
+        const hasBodyNoscript = bodyNoscriptCount > 0;
+        
+        const issues = [];
+        
+        // Check for missing or mismatched parts
+        if (hasGTM) {
+          if (!hasHeadScript) {
+            issues.push('Thiếu GTM script trong <head>');
+          } else if (headScriptCount !== uniqueIds.length) {
+            issues.push(`Số lượng GTM script trong <head> (${headScriptCount}) không khớp với số GTM ID (${uniqueIds.length})`);
+          }
+          
+          if (!hasBodyNoscript) {
+            issues.push('Thiếu GTM noscript trong <body>');
+          } else if (bodyNoscriptCount !== uniqueIds.length) {
+            issues.push(`Số lượng GTM noscript trong <body> (${bodyNoscriptCount}) không khớp với số GTM ID (${uniqueIds.length})`);
+          }
+        }
+        
+        // Only add to results if there's an issue or no GTM
+        if (!hasGTM || issues.length > 0) {
+          results.push({
+            file: path.relative(directory, file),
+            hasGTM,
+            hasHeadScript,
+            hasBodyNoscript,
+            containerId: uniqueIds.length > 0 ? `${uniqueIds.join(', ')} (${uniqueIds.length} GTM)` : '-',
+            issues
+          });
+        }
+      } catch (error) {
+        // Skip files with errors
+      }
+    }
+    
+    return results;
+  }
+
+  async findAllFiles(directory) {
+    const files = [];
+    
+    async function walk(dir) {
+      try {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
+            await walk(fullPath);
+          } else if (entry.isFile()) {
+            files.push(fullPath);
+          }
+        }
+      } catch (error) {
+        // Skip directories that can't be read
+      }
+    }
+    
+    await walk(directory);
+    return files;
   }
 }
 

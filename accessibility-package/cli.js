@@ -129,6 +129,23 @@ for (let i = 0; i < args.length; i++) {
     case '--google-tag-manager':
       options.gtmCheckOnly = true;
       break;
+    case '--check-meta':
+    case '--meta-check':
+      options.checkMetaOnly = true;
+      break;
+    case '--fix-meta':
+    case '--meta-fix':
+      options.fixMetaOnly = true;
+      break;
+    case '--full-report':
+    case '--report':
+    case '--excel-report':
+      options.fullReport = true;
+      break;
+    case '-o':
+    case '--output':
+      options.reportOutput = args[++i];
+      break;
     case '--unused-files':
       options.unusedFilesOnly = true;
       break;
@@ -198,6 +215,10 @@ Options:
   --broken-links           Check for broken external links only (no auto-fix)
   --404-resources          Check for missing local resources only (no auto-fix)
   --gtm-check              Check Google Tag Manager installation (no auto-fix)
+  --check-meta             Check meta tags and Open Graph Protocol (no auto-fix)
+  --fix-meta               Auto-fix missing meta tags and OGP tags
+  --full-report            Generate comprehensive Excel report (all checks)
+  -o, --output <file>      Output path for Excel report (use with --full-report)
   --unused-files           Check for unused files in project (no auto-fix)
   --dead-code              Check for dead code in CSS and JavaScript (no auto-fix)
   --file-size, --size-check Check file sizes and suggest optimizations (no auto-fix)
@@ -235,6 +256,11 @@ Examples:
   node cli.js --broken-links           # Check for broken external links only
   node cli.js --404-resources          # Check for missing local resources only
   node cli.js --gtm-check              # Check Google Tag Manager installation
+  node cli.js --check-meta             # Check meta tags and Open Graph Protocol
+  node cli.js --fix-meta               # Auto-fix missing meta tags and OGP
+  node cli.js --fix-meta --dry-run     # Preview meta tag fixes
+  node cli.js --full-report            # Generate comprehensive Excel report
+  node cli.js --full-report ./project -o report.xlsx  # Custom output path
   node cli.js --unused-files           # Check for unused files in project
   node cli.js --dead-code              # Check for dead CSS and JavaScript code
   node cli.js --file-size              # Check file sizes and suggest optimizations
@@ -296,10 +322,17 @@ async function main() {
   });
 
   try {
+    // Handle Full Report mode first
+    if (options.fullReport) {
+      console.log(chalk.blue('📊 Đang tạo báo cáo toàn diện...'));
+      await fixer.generateFullReport(options.directory, options.reportOutput);
+      return;
+    }
+    
     // Handle different modes - All modes now include cleanup
     if (options.cleanupOnly || options.altOnly || options.langOnly || options.roleOnly || options.ariaLabelOnly ||
         options.formsOnly || options.nestedOnly || options.buttonsOnly || options.linksOnly || options.landmarksOnly || 
-        options.headingsOnly || options.dlOnly || options.linksCheckOnly || options.brokenLinksOnly || options.missingResourcesOnly || options.gtmCheckOnly || options.unusedFilesOnly || options.deadCodeOnly || options.fileSizeOnly) {
+        options.headingsOnly || options.dlOnly || options.linksCheckOnly || options.brokenLinksOnly || options.missingResourcesOnly || options.gtmCheckOnly || options.checkMetaOnly || options.fixMetaOnly || options.unusedFilesOnly || options.deadCodeOnly || options.fileSizeOnly) {
       // Individual modes - handle each separately, then run cleanup
     } else {
       // Default mode: Run comprehensive fix (all fixes including cleanup)
@@ -589,6 +622,22 @@ async function main() {
       console.log(chalk.gray('💡 GTM cần có cả <script> trong <head> và <noscript> sau <body>'));
       
       showCompletionMessage(options, 'Kiểm tra GTM');
+      return;
+      
+    } else if (options.checkMetaOnly) {
+      // Check meta tags only (no fixes)
+      console.log(chalk.blue('🏷️ Đang kiểm tra meta tags và Open Graph Protocol...'));
+      await fixer.checkMetaTags(options.directory);
+      
+      showCompletionMessage(options, 'Kiểm tra meta tags');
+      return;
+      
+    } else if (options.fixMetaOnly) {
+      // Fix meta tags
+      console.log(chalk.blue('🔧 Đang tự động sửa meta tags...')); 
+      await fixer.fixMetaTags(options.directory, { dryRun: options.dryRun, backup: options.backupFiles });
+      
+      showCompletionMessage(options, 'Sửa meta tags');
       return;
       
     } else if (options.unusedFilesOnly) {

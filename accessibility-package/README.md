@@ -23,6 +23,8 @@
 - 🔍 **Broken Links Detection** - Detect broken external links
 - 📁 **404 Resources Detection** - Detect missing local resources (images, CSS, JS, etc.)
 - 🏷️ **Google Tag Manager Check** - Validate GTM installation (script + noscript)
+- 🏷️ **Meta Tags Validation** - Check for typos and syntax errors in meta tags and Open Graph Protocol
+- ✏️ **Meta Tags Auto-Fix** - Automatically fix typos in meta property names and content values
 - 🗂️ **Unused Files Detection** - Find files not referenced anywhere in the project
 - ☠️ **Dead Code Analysis** - Detect unused CSS rules and JavaScript functions
 - 📏 **File Size Analysis** - Check file sizes and suggest optimizations
@@ -159,6 +161,10 @@ Fix Modes:
   --broken-links           Check for broken external links only (no auto-fix)
   --404-resources          Check for missing local resources only (no auto-fix)
   --gtm-check              Check Google Tag Manager installation (no auto-fix)
+  --check-meta, --meta-check  Check meta tags for typos and syntax errors (no auto-fix)
+  --fix-meta, --meta-fix   Auto-fix meta tag typos and syntax errors
+  --full-report            Generate comprehensive Excel report (all checks)
+  -o, --output <file>      Output path for Excel report (use with --full-report)
   --unused-files           Check for unused files in project
   --dead-code              Check for dead code in CSS and JavaScript
   --file-size, --size-check Check file sizes and suggest optimizations
@@ -198,6 +204,11 @@ gbu-a11y --links-check       # Check broken links and missing resources + cleanu
 gbu-a11y --broken-links      # Check broken external links only + cleanup
 gbu-a11y --404-resources     # Check missing local resources only + cleanup
 gbu-a11y --gtm-check         # Check Google Tag Manager installation
+gbu-a11y --check-meta        # Check meta tags for typos and syntax errors
+gbu-a11y --fix-meta          # Auto-fix meta tag typos
+gbu-a11y --fix-meta --dry-run  # Preview meta tag fixes
+gbu-a11y --full-report       # Generate comprehensive Excel report
+gbu-a11y --full-report -o report.xlsx  # Custom output path
 gbu-a11y --unused-files      # Check for unused files in project
 gbu-a11y --dead-code         # Check for dead CSS and JavaScript code
 gbu-a11y --file-size         # Check file sizes and suggest optimizations
@@ -366,6 +377,18 @@ await fixer.checkFileSizes('./src');
   - Check container ID consistency
   - Validate proper positioning of both snippets
   - Reports: complete installation, missing components, position issues
+- **Meta Tags Validation** → Check typos and syntax errors in meta tags
+  - Detect property name typos (og:titel → og:title, discription → description)
+  - Detect content value typos (websit → website, ja_jp → ja_JP)
+  - Check syntax errors (missing content, empty values)
+  - Support Open Graph Protocol and Twitter Card
+  - 40+ common typo patterns in dictionary
+- **Meta Tags Auto-Fix** → Automatically fix meta tag errors
+  - Fix property name typos in one click
+  - Fix content value typos
+  - Handle multiple errors on same tag
+  - Dry-run mode for preview
+  - Backup support for safety
 - **File Size Analysis** → Check file sizes and suggest optimizations
   - Detect large files exceeding recommended thresholds
   - Type-specific optimization suggestions (images, CSS, JS, etc.)
@@ -445,6 +468,126 @@ For proper GTM installation, each page should have:
   height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <!-- End Google Tag Manager (noscript) -->
   
+  <!-- Your page content -->
+</body>
+```
+
+## 🏷️ Meta Tags Validation & Auto-Fix
+
+The `--check-meta` and `--fix-meta` features help you maintain correct meta tags and Open Graph Protocol implementation.
+
+### What It Checks
+
+1. **Property Name Typos**: Detects common misspellings in meta tag properties
+   - `og:titel` → `og:title`
+   - `og:descripion` → `og:description`
+   - `og:sitename` → `og:site_name`
+   - `discription` → `description`
+   - And 40+ more common typos
+
+2. **Content Value Typos**: Fixes incorrect values
+   - `websit` → `website` (og:type)
+   - `ja_jp` → `ja_JP` (og:locale)
+   - `summary_larg_image` → `summary_large_image` (twitter:card)
+
+3. **Syntax Errors**: Identifies structural issues
+   - Missing content attributes
+   - Empty content values
+   - Mixed quote styles
+
+### Usage
+
+```bash
+# Check for meta tag errors
+gbu-a11y --check-meta
+
+# Check specific directory
+gbu-a11y --check-meta ./public
+
+# Auto-fix errors
+gbu-a11y --fix-meta
+
+# Preview fixes without applying
+gbu-a11y --fix-meta --dry-run
+
+# Fix with backup
+gbu-a11y --fix-meta --backup
+
+# Alternative commands
+gbu-a11y --meta-check
+gbu-a11y --meta-fix
+```
+
+### Example Output
+
+**Check Mode (`--check-meta`)**:
+```
+🔍 Checking meta tags for typos and syntax errors...
+
+❌ public/index.html
+   1. Lỗi chính tả property: "og:titel" → "og:title"
+   2. Lỗi chính tả property: "og:descripion" → "og:description"
+   3. Lỗi giá trị og:type: "websit" → "website"
+   4. Lỗi chính tả property: "twitter:car" → "twitter:card"
+
+✅ public/about.html - No errors
+
+📊 Summary:
+   Total files checked: 2
+   Files with errors: 1
+   Total errors found: 4
+   Files OK: 1
+
+💡 Sử dụng --meta-fix để tự động sửa các lỗi này
+```
+
+**Fix Mode (`--fix-meta`)**:
+```
+🔧 Fixing meta tag typos and syntax errors...
+
+🔧 Fixing: public/index.html
+   ✓ Fixed property: og:titel → og:title
+   ✓ Fixed property: og:descripion → og:description
+   ✓ Fixed og:type value: websit → website
+   ✓ Fixed property: twitter:car → twitter:card
+   💾 Saved 4 fix(es) to public/index.html
+
+✅ public/about.html - No errors to fix
+
+📊 Summary:
+   Total files checked: 2
+   Files fixed: 1
+   Total fixes applied: 4
+```
+
+### Supported Typo Patterns
+
+**Open Graph Properties**:
+- `og:titel`, `og:tittle`, `og:tilte` → `og:title`
+- `og:descripion`, `og:discription`, `og:desciption` → `og:description`
+- `og:imge`, `og:iamge` → `og:image`
+- `og:typ`, `og:tipe` → `og:type`
+- `og:sitename`, `og:sit_name` → `og:site_name`
+- `og:local` → `og:locale`
+
+**Twitter Card Properties**:
+- `twitter:car` → `twitter:card`
+- `twitter:titel`, `twitter:tittle` → `twitter:title`
+- `twitter:descripion`, `twitter:discription` → `twitter:description`
+- `twitter:imge` → `twitter:image`
+- `twitter:creater` → `twitter:creator`
+
+**Meta Tag Properties**:
+- `discription`, `descripion`, `desciption` → `description`
+- `viewpor`, `veiwport` → `viewport`
+- `keyword` → `keywords`
+- `auther`, `autor` → `author`
+
+**Content Values**:
+- `websit`, `web-site`, `artical`, `aticle` (og:type)
+- `ja_jp` → `ja_JP`, `en_us` → `en_US`, `vi_vn` → `vi_VN` (og:locale)
+- `summary_larg_image`, `summay` (twitter:card)
+
   <!-- Your page content -->
 </body>
 ```
