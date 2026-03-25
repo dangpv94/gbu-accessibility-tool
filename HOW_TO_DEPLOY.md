@@ -36,7 +36,7 @@ npm view gbu-accessibility-package
 npm pack
 
 # Cài đặt test
-npm install -g ./gbu-accessibility-package-1.2.0.tgz
+npm install -g ./gbu-accessibility-package-3.12.1.tgz
 
 # Test commands
 gbu-a11y --help

@@ -171,6 +171,9 @@ Chế độ sửa lỗi:
   --full-report            Tạo báo cáo Excel toàn diện (tất cả kiểm tra)
   -o, --output <file>      Đường dẫn output cho báo cáo Excel (dùng với --full-report)
   --unused-files           Kiểm tra file không sử dụng trong dự án
+  --unused-files-list      Tạo file unused-files-list.txt từ danh sách file dư thừa
+  --delete-unused-files    Xóa toàn bộ file có trong unused-files-list.txt
+  --list-file <file>       Tùy chỉnh tên/đường dẫn file list trong thư mục target
   --dead-code              Kiểm tra dead code trong CSS và JavaScript
   --file-size, --size-check Kiểm tra dung lượng file và đề xuất tối ưu hóa
   --cleanup-only           Chỉ dọn dẹp role attributes trùng lặp
@@ -214,6 +217,9 @@ gbu-a11y --fix-meta --dry-run  # Xem trước sửa lỗi meta tags
 gbu-a11y --full-report       # Tạo báo cáo Excel toàn diện
 gbu-a11y --full-report -o report.xlsx  # Đường dẫn output tùy chỉnh
 gbu-a11y --unused-files      # Kiểm tra file không sử dụng trong dự án
+gbu-a11y --unused-files-list # Tạo ./unused-files-list.txt
+gbu-a11y --delete-unused-files # Xóa file theo ./unused-files-list.txt
+gbu-a11y --delete-unused-files --dry-run # Xem trước các file sẽ bị xóa
 gbu-a11y --dead-code         # Kiểm tra dead CSS và JavaScript code
 gbu-a11y --file-size         # Kiểm tra dung lượng file và đề xuất tối ưu hóa
 

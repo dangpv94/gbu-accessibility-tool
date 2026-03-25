@@ -166,6 +166,9 @@ Fix Modes:
   --full-report            Generate comprehensive Excel report (all checks)
   -o, --output <file>      Output path for Excel report (use with --full-report)
   --unused-files           Check for unused files in project
+  --unused-files-list      Create unused-files-list.txt from detected unused files
+  --delete-unused-files    Delete all files listed in unused-files-list.txt
+  --list-file <file>       Custom list file name/path inside target directory
   --dead-code              Check for dead code in CSS and JavaScript
   --file-size, --size-check Check file sizes and suggest optimizations
   --cleanup-only           Only cleanup duplicate role attributes
@@ -210,6 +213,9 @@ gbu-a11y --fix-meta --dry-run  # Preview meta tag fixes
 gbu-a11y --full-report       # Generate comprehensive Excel report
 gbu-a11y --full-report -o report.xlsx  # Custom output path
 gbu-a11y --unused-files      # Check for unused files in project
+gbu-a11y --unused-files-list # Create ./unused-files-list.txt
+gbu-a11y --delete-unused-files # Delete files listed in ./unused-files-list.txt
+gbu-a11y --delete-unused-files --dry-run # Preview files that would be deleted
 gbu-a11y --dead-code         # Check for dead CSS and JavaScript code
 gbu-a11y --file-size         # Check file sizes and suggest optimizations
 

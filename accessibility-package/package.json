@@ -1,6 +1,6 @@
 {
   "name": "gbu-accessibility-package",
-  "version": "3.12.0",
+  "version": "3.12.1",
   "description": "Comprehensive accessibility fixes and project optimization for HTML files. Smart context-aware alt text generation, form labels, button names, link names, landmarks, heading analysis, WCAG-compliant role attributes, unused files detection, dead code analysis, broken external links detection, and missing local resources detection. Covers major axe DevTools issues with individual fix modes.",
   "main": "index.js",
   "bin": {
@@ -26,6 +26,8 @@
     "404-resources": "node cli.js --404-resources",
     "gtm-check": "node cli.js --gtm-check",
     "unused-files": "node cli.js --unused-files",
+    "unused-files-list": "node cli.js --unused-files-list",
+    "delete-unused-files": "node cli.js --delete-unused-files",
     "dead-code": "node cli.js --dead-code",
     "file-size": "node cli.js --file-size",
     "cleanup-only": "node cli.js --cleanup-only",

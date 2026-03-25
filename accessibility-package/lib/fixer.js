@@ -6073,6 +6073,134 @@ class AccessibilityFixer {
     };
   }
 
+  resolveUnusedFilesListPath(directory = '.', listFile = 'unused-files-list.txt') {
+    const scanDirectory = path.resolve(directory);
+    const listFileName = listFile || 'unused-files-list.txt';
+
+    if (path.isAbsolute(listFileName)) {
+      return listFileName;
+    }
+
+    return path.join(scanDirectory, listFileName);
+  }
+
+  async generateUnusedFilesList(directory = '.', listFile = 'unused-files-list.txt') {
+    const scanDirectory = path.resolve(directory);
+    const outputPath = this.resolveUnusedFilesListPath(scanDirectory, listFile);
+    const unusedResults = await this.checkUnusedFiles(scanDirectory);
+    const fileContent = unusedResults.unusedFiles
+      .map(file => file.relativePath.replace(/\\/g, '/'))
+      .join('\n');
+
+    await fs.writeFile(outputPath, fileContent ? `${fileContent}\n` : '', 'utf8');
+
+    console.log(chalk.green(`📝 Đã tạo danh sách file dư thừa tại: ${outputPath}`));
+    console.log(chalk.gray(`📊 Ghi ${unusedResults.unusedCount} path vào file list`));
+
+    return {
+      ...unusedResults,
+      outputPath
+    };
+  }
+
+  async deleteUnusedFilesFromList(directory = '.', listFile = 'unused-files-list.txt', options = {}) {
+    const scanDirectory = path.resolve(directory);
+    const listPath = this.resolveUnusedFilesListPath(scanDirectory, listFile);
+    const dryRun = Boolean(options.dryRun);
+    const deletedFiles = [];
+    const missingFiles = [];
+    const skippedEntries = [];
+
+    const content = await fs.readFile(listPath, 'utf8');
+    const entries = [...new Set(
+      content
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line && !line.startsWith('#'))
+    )];
+
+    for (const entry of entries) {
+      const normalizedEntry = entry.replace(/\\/g, '/');
+      const resolvedPath = path.resolve(scanDirectory, normalizedEntry);
+      const relativeToScan = path.relative(scanDirectory, resolvedPath);
+
+      if (relativeToScan.startsWith('..') || path.isAbsolute(relativeToScan)) {
+        skippedEntries.push({
+          path: entry,
+          reason: 'Path nằm ngoài thư mục target'
+        });
+        continue;
+      }
+
+      if (resolvedPath === path.resolve(listPath)) {
+        skippedEntries.push({
+          path: entry,
+          reason: 'Bỏ qua chính file list'
+        });
+        continue;
+      }
+
+      try {
+        const stats = await fs.lstat(resolvedPath);
+
+        if (!stats.isFile() && !stats.isSymbolicLink()) {
+          skippedEntries.push({
+            path: entry,
+            reason: 'Không phải file'
+          });
+          continue;
+        }
+
+        if (!dryRun) {
+          await fs.unlink(resolvedPath);
+        }
+
+        deletedFiles.push({
+          path: resolvedPath,
+          relativePath: relativeToScan.replace(/\\/g, '/')
+        });
+      } catch (error) {
+        if (error.code === 'ENOENT') {
+          missingFiles.push({
+            path: entry,
+            reason: 'File không tồn tại'
+          });
+          continue;
+        }
+
+        skippedEntries.push({
+          path: entry,
+          reason: error.message
+        });
+      }
+    }
+
+    console.log(chalk.green(
+      dryRun
+        ? `🧪 Dry run: ${deletedFiles.length} file trong list sẽ được xóa`
+        : `🗑️ Đã xóa ${deletedFiles.length} file từ list`
+    ));
+
+    if (missingFiles.length > 0) {
+      console.log(chalk.yellow(`⚠️ ${missingFiles.length} path không còn tồn tại`));
+    }
+
+    if (skippedEntries.length > 0) {
+      console.log(chalk.yellow(`⚠️ ${skippedEntries.length} path bị bỏ qua để đảm bảo an toàn hoặc không hợp lệ`));
+    }
+
+    return {
+      listPath,
+      deletedFiles,
+      deletedCount: deletedFiles.length,
+      missingFiles,
+      missingCount: missingFiles.length,
+      skippedEntries,
+      skippedCount: skippedEntries.length,
+      dryRun
+    };
+  }
+
   // Enhanced file reference checking - now works with relative paths
   isFileReferenced(filePath, relativePath, referencedFiles, projectRoot) {
     // Check various possible reference formats
@@ -6310,12 +6438,17 @@ class AccessibilityFixer {
             const srcUrl = parts[0];
             
             if (srcUrl) {
+              const normalizedSrcUrl = this.normalizeReferenceUrl(srcUrl);
+              if (!normalizedSrcUrl) {
+                return;
+              }
+
               // Check if it's a local file
-              if (this.isLocalFile(srcUrl)) {
-                this.addNormalizedUrl(references, srcUrl);
-              } else if (this.isAbsoluteUrlToLocalFile(srcUrl)) {
+              if (this.isLocalFile(normalizedSrcUrl)) {
+                this.addNormalizedUrl(references, normalizedSrcUrl);
+              } else if (this.isAbsoluteUrlToLocalFile(normalizedSrcUrl)) {
                 // Extract local path from absolute URL (e.g., https://example.com/assets/img/file.png -> /assets/img/file.png)
-                const localPath = this.extractLocalPathFromAbsoluteUrl(srcUrl);
+                const localPath = this.extractLocalPathFromAbsoluteUrl(normalizedSrcUrl);
                 if (localPath) {
                   this.addNormalizedUrl(references, localPath);
                 }
@@ -6323,12 +6456,17 @@ class AccessibilityFixer {
             }
           });
         } else {
+          const normalizedUrl = this.normalizeReferenceUrl(url);
+          if (!normalizedUrl) {
+            continue;
+          }
+
           // Regular src/href/content attributes
-          if (this.isLocalFile(url)) {
-            this.addNormalizedUrl(references, url);
-          } else if (this.isAbsoluteUrlToLocalFile(url)) {
+          if (this.isLocalFile(normalizedUrl)) {
+            this.addNormalizedUrl(references, normalizedUrl);
+          } else if (this.isAbsoluteUrlToLocalFile(normalizedUrl)) {
             // Extract local path from absolute URL
-            const localPath = this.extractLocalPathFromAbsoluteUrl(url);
+            const localPath = this.extractLocalPathFromAbsoluteUrl(normalizedUrl);
             if (localPath) {
               this.addNormalizedUrl(references, localPath);
             }
@@ -6342,43 +6480,75 @@ class AccessibilityFixer {
 
   // Check if URL is an absolute URL that points to a local file (same domain or project assets)
   isAbsoluteUrlToLocalFile(url) {
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    const normalizedUrl = this.normalizeReferenceUrl(url);
+    if (!normalizedUrl) {
+      return false;
+    }
+
+    if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
       return false;
     }
     
     // Check if URL contains common asset paths (customize based on your project structure)
     // This helps identify URLs like: https://www.example.com/assets/img/file.png
-    return url.includes('/assets/') || 
-           url.includes('/static/') || 
-           url.includes('/img/') ||
-           url.includes('/images/') ||
-           url.includes('/css/') ||
-           url.includes('/js/') ||
-           url.includes('/media/') ||
-           url.includes('/fonts/') ||
-           url.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|ico|pdf|mp4|webm)$/i);
+    return normalizedUrl.includes('/assets/') || 
+           normalizedUrl.includes('/static/') || 
+           normalizedUrl.includes('/img/') ||
+           normalizedUrl.includes('/images/') ||
+           normalizedUrl.includes('/css/') ||
+           normalizedUrl.includes('/js/') ||
+           normalizedUrl.includes('/media/') ||
+           normalizedUrl.includes('/fonts/') ||
+           normalizedUrl.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|ico|pdf|mp4|webm)$/i);
   }
 
   // Extract local path from absolute URL
   // e.g., "https://www.example.com/assets/img/file.png" -> "/assets/img/file.png"
   extractLocalPathFromAbsoluteUrl(url) {
     try {
-      const urlObj = new URL(url);
+      const normalizedUrl = this.normalizeReferenceUrl(url);
+      if (!normalizedUrl) {
+        return null;
+      }
+
+      const urlObj = new URL(normalizedUrl);
       return urlObj.pathname; // Returns "/assets/img/file.png"
     } catch (error) {
       return null;
     }
   }
 
+  normalizeReferenceUrl(url) {
+    if (typeof url !== 'string') {
+      return null;
+    }
+
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) {
+      return null;
+    }
+
+    const withoutHash = trimmedUrl.split('#')[0];
+    const withoutQuery = withoutHash.split('?')[0];
+    const normalizedUrl = withoutQuery.trim().replace(/\\/g, '/');
+
+    return normalizedUrl || null;
+  }
+
   // Helper method to add normalized URL variations
   addNormalizedUrl(references, url) {
-    // Store original URL and normalized versions for matching
-    references.push(url);
-    if (url.startsWith('/')) {
-      references.push(url.substring(1)); // Remove leading slash
+    const normalizedUrl = this.normalizeReferenceUrl(url);
+    if (!normalizedUrl) {
+      return;
     }
-    if (!url.startsWith('./') && !url.startsWith('/')) {
-      references.push('./' + url); // Add leading ./
+
+    // Store original URL and normalized versions for matching
+    references.push(normalizedUrl);
+    if (normalizedUrl.startsWith('/')) {
+      references.push(normalizedUrl.substring(1)); // Remove leading slash
+    }
+    if (!normalizedUrl.startsWith('./') && !normalizedUrl.startsWith('/')) {
+      references.push('./' + normalizedUrl); // Add leading ./
     }
   }
 
@@ -6398,7 +6568,7 @@ class AccessibilityFixer {
     for (const pattern of patterns) {
       let match;
       while ((match = pattern.exec(content)) !== null) {
-        const url = match[1];
+        const url = this.normalizeReferenceUrl(match[1]);
         if (this.isLocalFile(url)) {
           this.addNormalizedUrl(references, url);
         }
@@ -6424,15 +6594,15 @@ class AccessibilityFixer {
       // XMLHttpRequest
       /\.open\s*\(\s*["'][^"']*["']\s*,\s*["']([^"']+)["']/gi,
       // String literals that look like paths
-      /["']([^"']*\.(html|css|js|json|xml|jpg|jpeg|png|gif|svg|webp|ico))["']/gi,
+      /["']([^"']*\.(html|css|js|json|xml|jpg|jpeg|png|gif|svg|webp|ico)(?:[?#][^"']*)?)["']/gi,
       // Template literals with paths
-      /`([^`]*\.(html|css|js|json|xml|jpg|jpeg|png|gif|svg|webp|ico))`/gi
+      /`([^`]*\.(html|css|js|json|xml|jpg|jpeg|png|gif|svg|webp|ico)(?:[?#][^`]*)?)`/gi
     ];
     
     for (const pattern of patterns) {
       let match;
       while ((match = pattern.exec(content)) !== null) {
-        const url = match[1];
+        const url = this.normalizeReferenceUrl(match[1]);
         if (this.isLocalFile(url)) {
           this.addNormalizedUrl(references, url);
         }
@@ -6532,7 +6702,7 @@ class AccessibilityFixer {
     for (const pattern of patterns) {
       let match;
       while ((match = pattern.exec(content)) !== null) {
-        const url = match[1];
+        const url = this.normalizeReferenceUrl(match[1]);
         if (this.isLocalFile(url)) {
           this.addNormalizedUrl(references, url);
         }
@@ -6564,7 +6734,7 @@ class AccessibilityFixer {
     for (const pattern of patterns) {
       let match;
       while ((match = pattern.exec(content)) !== null) {
-        const url = match[1];
+        const url = this.normalizeReferenceUrl(match[1]);
         if (this.isLocalFile(url)) {
           this.addNormalizedUrl(references, url);
         }
@@ -6698,13 +6868,18 @@ class AccessibilityFixer {
   }
 
   isLocalFile(url) {
-    return !url.startsWith('http://') && 
-           !url.startsWith('https://') && 
-           !url.startsWith('//') &&
-           !url.startsWith('data:') &&
-           !url.startsWith('mailto:') &&
-           !url.startsWith('tel:') &&
-           !url.startsWith('#');
+    const normalizedUrl = this.normalizeReferenceUrl(url);
+    if (!normalizedUrl) {
+      return false;
+    }
+
+    return !normalizedUrl.startsWith('http://') && 
+           !normalizedUrl.startsWith('https://') && 
+           !normalizedUrl.startsWith('//') &&
+           !normalizedUrl.startsWith('data:') &&
+           !normalizedUrl.startsWith('mailto:') &&
+           !normalizedUrl.startsWith('tel:') &&
+           !normalizedUrl.startsWith('#');
   }
 
   resolveFilePath(url, baseDir) {
@@ -7378,9 +7553,14 @@ class AccessibilityFixer {
       // Extract file references from JSON values
       const extractFromObject = (obj) => {
         if (typeof obj === 'string') {
+          const normalizedValue = this.normalizeReferenceUrl(obj);
+          if (!normalizedValue) {
+            return;
+          }
+
           // Check if it looks like a file path
-          if (obj.includes('.') && (obj.includes('/') || obj.includes('\\'))) {
-            const resolved = this.resolveFilePath(obj, baseDir);
+          if (/\.(html?|css|js|json|xml|jpe?g|png|gif|svg|webp|ico)$/i.test(normalizedValue)) {
+            const resolved = this.resolveFilePath(normalizedValue, baseDir);
             if (resolved) {
               references.push(resolved);
             }
@@ -7419,7 +7599,7 @@ class AccessibilityFixer {
     patterns.forEach(pattern => {
       let match;
       while ((match = pattern.exec(content)) !== null) {
-        const filePath = match[1];
+        const filePath = this.normalizeReferenceUrl(match[1]);
         
         if (this.isLocalFile(filePath)) {
           const resolved = this.resolveFilePath(filePath, baseDir);

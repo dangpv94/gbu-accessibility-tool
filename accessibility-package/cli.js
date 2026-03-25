@@ -32,8 +32,11 @@ const options = {
   dlOnly: false,
   brokenLinksOnly: false,
   unusedFilesOnly: false,
+  unusedFilesListOnly: false,
+  deleteUnusedFilesFromList: false,
   deadCodeOnly: false,
   fileSizeOnly: false,
+  listFile: 'unused-files-list.txt',
   // Enhanced alt options
   enhancedAlt: false,
   altCreativity: 'balanced', // conservative, balanced, creative
@@ -149,6 +152,15 @@ for (let i = 0; i < args.length; i++) {
     case '--unused-files':
       options.unusedFilesOnly = true;
       break;
+    case '--unused-files-list':
+      options.unusedFilesListOnly = true;
+      break;
+    case '--delete-unused-files':
+      options.deleteUnusedFilesFromList = true;
+      break;
+    case '--list-file':
+      options.listFile = args[++i];
+      break;
     case '--dead-code':
       options.deadCodeOnly = true;
       break;
@@ -220,6 +232,9 @@ Options:
   --full-report            Generate comprehensive Excel report (all checks)
   -o, --output <file>      Output path for Excel report (use with --full-report)
   --unused-files           Check for unused files in project (no auto-fix)
+  --unused-files-list      Create unused-files-list.txt from detected unused files
+  --delete-unused-files    Delete all files listed in unused-files-list.txt
+  --list-file <file>       Custom list file name/path inside target directory
   --dead-code              Check for dead code in CSS and JavaScript (no auto-fix)
   --file-size, --size-check Check file sizes and suggest optimizations (no auto-fix)
   --enhanced-alt           Use enhanced alt attribute analysis and generation
@@ -262,6 +277,9 @@ Examples:
   node cli.js --full-report            # Generate comprehensive Excel report
   node cli.js --full-report ./project -o report.xlsx  # Custom output path
   node cli.js --unused-files           # Check for unused files in project
+  node cli.js --unused-files-list      # Create ./unused-files-list.txt
+  node cli.js --delete-unused-files    # Delete files listed in ./unused-files-list.txt
+  node cli.js --delete-unused-files --dry-run  # Preview files that would be deleted
   node cli.js --dead-code              # Check for dead CSS and JavaScript code
   node cli.js --file-size              # Check file sizes and suggest optimizations
   node cli.js --cleanup-only           # Only cleanup duplicate roles
@@ -332,7 +350,7 @@ async function main() {
     // Handle different modes - All modes now include cleanup
     if (options.cleanupOnly || options.altOnly || options.langOnly || options.roleOnly || options.ariaLabelOnly ||
         options.formsOnly || options.nestedOnly || options.buttonsOnly || options.linksOnly || options.landmarksOnly || 
-        options.headingsOnly || options.dlOnly || options.linksCheckOnly || options.brokenLinksOnly || options.missingResourcesOnly || options.gtmCheckOnly || options.checkMetaOnly || options.fixMetaOnly || options.unusedFilesOnly || options.deadCodeOnly || options.fileSizeOnly) {
+        options.headingsOnly || options.dlOnly || options.linksCheckOnly || options.brokenLinksOnly || options.missingResourcesOnly || options.gtmCheckOnly || options.checkMetaOnly || options.fixMetaOnly || options.unusedFilesOnly || options.unusedFilesListOnly || options.deleteUnusedFilesFromList || options.deadCodeOnly || options.fileSizeOnly) {
       // Individual modes - handle each separately, then run cleanup
     } else {
       // Default mode: Run comprehensive fix (all fixes including cleanup)
@@ -655,6 +673,39 @@ async function main() {
       console.log(chalk.gray('💡 Phát hiện file không sử dụng dựa trên heuristic - khuyến nghị xem xét thủ công'));
       
       showCompletionMessage(options, 'Kiểm tra file không sử dụng');
+      return;
+
+    } else if (options.unusedFilesListOnly) {
+      console.log(chalk.blue('📝 Đang tạo danh sách file không sử dụng...'));
+      const listResults = await fixer.generateUnusedFilesList(options.directory, options.listFile);
+
+      console.log(chalk.green(`\n✅ Đã tạo file list: ${listResults.outputPath}`));
+      console.log(chalk.gray(`📊 ${listResults.unusedCount} path đã được ghi vào list`));
+      console.log(chalk.gray('💡 Danh sách dùng path tương đối so với thư mục target và có thể dùng lại với --delete-unused-files'));
+      return;
+
+    } else if (options.deleteUnusedFilesFromList) {
+      console.log(chalk.blue('🗑️ Đang xóa file theo danh sách unused files...'));
+      const deleteResults = await fixer.deleteUnusedFilesFromList(options.directory, options.listFile, {
+        dryRun: options.dryRun
+      });
+
+      console.log(chalk.green(`\n✅ ${options.dryRun ? 'Đã mô phỏng xóa' : 'Đã xử lý xóa'} ${deleteResults.deletedCount} file từ list`));
+      console.log(chalk.gray(`📄 File list: ${deleteResults.listPath}`));
+
+      if (deleteResults.missingCount > 0) {
+        console.log(chalk.yellow(`⚠️ ${deleteResults.missingCount} file trong list không còn tồn tại`));
+      }
+
+      if (deleteResults.skippedCount > 0) {
+        console.log(chalk.yellow(`⚠️ ${deleteResults.skippedCount} entry bị bỏ qua vì không an toàn hoặc không hợp lệ`));
+      }
+
+      if (options.dryRun) {
+        console.log(chalk.cyan('\n💡 Đây là chế độ xem trước. Chạy lại không kèm --dry-run để xóa thật.'));
+      } else {
+        console.log(chalk.gray('💡 File list được giữ nguyên để bạn có thể đối chiếu sau khi xóa'));
+      }
       return;
       
     } else if (options.deadCodeOnly) {
